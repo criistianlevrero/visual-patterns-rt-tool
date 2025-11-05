@@ -1,0 +1,5 @@
+{
+  "name": "Generador de Textura de Escamas",
+  "description": "Una aplicación web para generar y personalizar texturas de escamas de pez. Ajusta el tamaño y el espaciado para crear patrones únicos.",
+  "requestFramePermissions": []
+}
