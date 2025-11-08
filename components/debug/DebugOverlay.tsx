@@ -37,6 +37,11 @@ const DebugOverlay: React.FC = () => {
   const maxLogs = 100;
   const fpsFrames = useRef<number[]>([]);
   const lastFpsUpdate = useRef(Date.now());
+  
+  // Use refs to track previous values without causing re-renders
+  const prevSettingsHashRef = useRef<string>('');
+  const prevSequencerStepRef = useRef<number>(0);
+  const prevAnimationActiveRef = useRef<boolean>(false);
 
   // Subscribe to store changes
   const storeState = useTextureStore((state) => ({
@@ -92,16 +97,19 @@ const DebugOverlay: React.FC = () => {
     return () => cancelAnimationFrame(rafId);
   }, []);
 
-  // Track store changes
+  // Track store changes - use refs to avoid circular dependencies
   useEffect(() => {
     const hash = getSettingsHash(storeState.currentSettings);
     const now = Date.now();
     
-    setMetrics(prev => {
-      const settingsChanged = prev.settingsHash !== hash;
-      const stepChanged = prev.sequencerStep !== storeState.sequencerCurrentStep;
-      
-      return {
+    const settingsChanged = prevSettingsHashRef.current !== hash;
+    const stepChanged = prevSequencerStepRef.current !== storeState.sequencerCurrentStep;
+    const animationActive = storeState.animationFrameRef !== null;
+    const animationChanged = prevAnimationActiveRef.current !== animationActive;
+    
+    // Only update metrics if something actually changed
+    if (settingsChanged || stepChanged || animationChanged) {
+      setMetrics(prev => ({
         ...prev,
         settingsHash: hash,
         settingsUpdates: settingsChanged ? prev.settingsUpdates + 1 : prev.settingsUpdates,
@@ -109,13 +117,13 @@ const DebugOverlay: React.FC = () => {
         sequencerTicks: stepChanged ? prev.sequencerTicks + 1 : prev.sequencerTicks,
         lastSequencerTime: stepChanged ? now : prev.lastSequencerTime,
         currentPatternId: storeState.selectedPatternId,
-        animationFrameActive: storeState.animationFrameRef !== null,
+        animationFrameActive: animationActive,
         transitionProgress: storeState.transitionProgress,
-      };
-    });
+      }));
+    }
     
     // Log significant events
-    if (storeState.sequencerCurrentStep !== metrics.sequencerStep) {
+    if (stepChanged) {
       addLog('sequencer', {
         step: storeState.sequencerCurrentStep,
         pattern: storeState.selectedPatternId,
@@ -123,14 +131,19 @@ const DebugOverlay: React.FC = () => {
       });
     }
     
-    if (storeState.animationFrameRef !== null && !metrics.animationFrameActive) {
+    if (animationActive && !prevAnimationActiveRef.current) {
       addLog('animation-start', { progress: storeState.transitionProgress });
     }
     
-    if (storeState.animationFrameRef === null && metrics.animationFrameActive) {
+    if (!animationActive && prevAnimationActiveRef.current) {
       addLog('animation-end', { progress: storeState.transitionProgress });
     }
-  }, [storeState, metrics.settingsHash, metrics.sequencerStep, metrics.animationFrameActive]);
+    
+    // Update refs for next comparison
+    prevSettingsHashRef.current = hash;
+    prevSequencerStepRef.current = storeState.sequencerCurrentStep;
+    prevAnimationActiveRef.current = animationActive;
+  }, [storeState.currentSettings, storeState.sequencerCurrentStep, storeState.selectedPatternId, storeState.animationFrameRef, storeState.transitionProgress]);
 
   const addLog = (type: string, data: any) => {
     setLogs(prev => {
