@@ -7,6 +7,7 @@ import { FishIcon, ConsoleIcon, EnterFullscreenIcon, ExitFullscreenIcon, Setting
 import MidiConsole from './components/midi/MidiConsole';
 import ViewportControls from './components/controls/ViewportControls';
 import Sequencer from './components/sequencer/Sequencer';
+import DebugOverlay from './components/debug/DebugOverlay';
 import type { Project } from './types';
 
 interface AppProps {
@@ -213,6 +214,9 @@ const App: React.FC<AppProps> = ({ initialProject }) => {
           <ConsoleIcon className="w-7 h-7" />
         </button>
       )}
+      
+      {/* Debug Overlay */}
+      <DebugOverlay />
     </div>
   );
 };
