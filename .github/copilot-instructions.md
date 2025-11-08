@@ -1,5 +1,10 @@
 # Visual Patterns RT Tool - AI Agent Instructions
 
+## Important Rules
+- **NEVER commit changes automatically**: Always wait for explicit user request to commit
+- Only run `git commit` commands when the user explicitly asks to commit changes
+- You can prepare changes and show status, but do not execute commits without permission
+
 ## Project Overview
 Real-time visual pattern generator for VJs and visual artists. React + Vite application with WebGL/Canvas2D renderers, MIDI integration for live performance, pattern sequencing, and state persistence.
 
