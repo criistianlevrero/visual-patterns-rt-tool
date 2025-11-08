@@ -1,4 +1,3 @@
-
 import React, { useRef } from 'react';
 import { useTextureStore } from '../../store';
 import { TrashIcon, DownloadIcon, UploadIcon } from '../shared/icons';
@@ -21,6 +20,7 @@ const ControlPanel: React.FC = () => {
     learningPatternMidiNote,
     midiConnectionError,
     renderer,
+    areControlsLocked,
   } = useTextureStore((state: ReturnType<typeof useTextureStore.getState>) => ({
     project: state.project,
     activeSequenceIndex: state.activeSequenceIndex,
@@ -31,6 +31,7 @@ const ControlPanel: React.FC = () => {
     learningPatternMidiNote: state.learningPatternMidiNote,
     midiConnectionError: state.midi.connectionError,
     renderer: state.project?.globalSettings.renderer ?? 'webgl',
+    areControlsLocked: state.areControlsLocked,
   }));
 
   const {
@@ -46,6 +47,7 @@ const ControlPanel: React.FC = () => {
     importProject,
     clearMidiError,
     setRenderer,
+    setAreControlsLocked,
   } = useTextureStore.getState();
 
   if (!project) return null;
@@ -68,6 +70,28 @@ const ControlPanel: React.FC = () => {
 
   return (
     <div className="divide-y divide-gray-700">
+        <div className="py-4 space-y-3">
+            <div className="flex justify-between items-center">
+                <div className="flex flex-col">
+                    <h3 className="font-semibold text-gray-200">Bloquear Controles</h3>
+                    <p className="text-sm text-gray-400">Desactiva los sliders para depurar el secuenciador.</p>
+                </div>
+                <button
+                    onClick={() => setAreControlsLocked(!areControlsLocked)}
+                    className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-cyan-500 ${
+                        areControlsLocked ? 'bg-cyan-600' : 'bg-gray-600'
+                    }`}
+                    role="switch"
+                    aria-checked={areControlsLocked}
+                >
+                    <span
+                        className={`inline-block w-4 h-4 transform bg-white rounded-full transition-transform ${
+                            areControlsLocked ? 'translate-x-5' : 'translate-x-1'
+                        }`}
+                    />
+                </button>
+            </div>
+        </div>
         <CollapsibleSection title="Configuración MIDI" defaultOpen>
             {midiConnectionError ? (
                 <div className="mb-4 bg-red-900/60 border border-red-700 text-red-200 px-4 py-3 rounded-lg relative text-sm" role="alert">

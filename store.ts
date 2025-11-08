@@ -2,7 +2,6 @@ import { createWithEqualityFn } from 'zustand/traditional';
 import { produce } from 'immer';
 import { shallow } from 'zustand/shallow';
 import { renderers } from './components/renderers';
-// FIX: `ControlSection` and `SliderControlConfig` are moved to `types.ts` so this import will now work.
 import type { Project, ControlSettings, Pattern, GradientColor, MidiLogEntry, PropertyTrack, Keyframe, ControlSection, SliderControlConfig } from './types';
 
 const LOCAL_STORAGE_KEY = 'textureAppProject';
@@ -17,6 +16,15 @@ interface MidiState {
     connectionError: string | null;
 }
 
+// State for an active user-driven pattern transition
+interface PatternTransitionState {
+    isActive: boolean;
+    startTime: number;
+    duration: number;
+    startSettings: ControlSettings | null;
+    endSettings: ControlSettings | null;
+}
+
 interface State {
     project: Project | null;
     activeSequenceIndex: number;
@@ -26,15 +34,16 @@ interface State {
     selectedPatternId: string | null;
     learningPatternMidiNote: string | null;
     sequencerCurrentStep: number;
-    sequencerTimeoutId: number | null;
-    animationFrameRef: number | null;
+    // Refs for animation state, kept outside reactive state
     lastAppliedSettingsRef: ControlSettings | null;
     previousGradient: GradientColor[] | null;
     previousBackgroundGradient: GradientColor[] | null;
     transitionProgress: number;
+    patternTransition: PatternTransitionState;
     midi: MidiState;
     midiLog: MidiLogEntry[];
     viewportMode: 'default' | 'desktop' | 'mobile';
+    areControlsLocked: boolean;
 }
 
 interface Actions {
@@ -63,7 +72,6 @@ interface Actions {
     setSequencerBpm: (bpm: number) => void;
     setSequencerSteps: (steps: (string | null)[]) => void;
     setSequencerNumSteps: (numSteps: number) => void;
-    _tickSequencer: () => void;
     
     // Property Sequencer Actions
     addPropertyTrack: (property: keyof ControlSettings) => void;
@@ -83,6 +91,11 @@ interface Actions {
     clearMidiLog: () => void;
     setViewportMode: (mode: 'default' | 'desktop' | 'mobile') => void;
     setRenderer: (renderer: string) => void;
+    setAreControlsLocked: (locked: boolean) => void;
+
+    // Internal animation methods
+    _masterAnimationLoop: (time: number) => void;
+    _tickSequencer: () => void;
 }
 
 // --- Helper Functions ---
@@ -99,6 +112,15 @@ const controlConfigs = {
 };
 
 const lerp = (a: number, b: number, t: number) => a * (1 - t) + b * t;
+
+// --- Master Animation Loop Logic ---
+// This is kept in a ref within the store's closure to avoid re-renders.
+// It holds all the non-reactive state for the animation loop.
+const _masterAnimationLoopRef = {
+    ref: 0,
+    lastTime: 0,
+    sequencerClock: 0,
+};
 
 // --- Zustand Store Definition ---
 
@@ -124,12 +146,17 @@ export const useTextureStore = createWithEqualityFn<State & Actions>((set, get):
     selectedPatternId: null,
     learningPatternMidiNote: null,
     sequencerCurrentStep: 0,
-    sequencerTimeoutId: null,
-    animationFrameRef: null,
     lastAppliedSettingsRef: null,
     previousGradient: null,
     previousBackgroundGradient: null,
     transitionProgress: 1,
+    patternTransition: {
+        isActive: false,
+        startTime: 0,
+        duration: 0,
+        startSettings: null,
+        endSettings: null,
+    },
     midi: {
         devices: [],
         selectedDeviceId: null,
@@ -139,6 +166,7 @@ export const useTextureStore = createWithEqualityFn<State & Actions>((set, get):
     },
     midiLog: [],
     viewportMode: 'default',
+    areControlsLocked: false,
 
     // --- Actions ---
 
@@ -150,23 +178,13 @@ export const useTextureStore = createWithEqualityFn<State & Actions>((set, get):
             currentSettings: {
                 ...get().currentSettings,
                 ...initialSettings
-            }
+            },
+            lastAppliedSettingsRef: initialSettings,
         });
         
-        // Start texture rotation animation loop
-        const animateRotation = () => {
-            const speed = get().currentSettings.textureRotationSpeed;
-            if (speed !== 0) {
-                set(state => ({ textureRotation: (state.textureRotation + speed * 0.5) % 360 }));
-            }
-            requestAnimationFrame(animateRotation);
-        };
-        animateRotation();
-
-        // Start sequencer if it's set to play
-        if (project.globalSettings.isSequencerPlaying) {
-            get()._tickSequencer();
-        }
+        // Start the single master animation loop
+        _masterAnimationLoopRef.lastTime = performance.now();
+        _masterAnimationLoopRef.ref = requestAnimationFrame(get()._masterAnimationLoop);
     },
 
     setProject: (project) => {
@@ -235,9 +253,16 @@ export const useTextureStore = createWithEqualityFn<State & Actions>((set, get):
     },
 
     setCurrentSetting: <K extends keyof ControlSettings>(key: K, value: ControlSettings[K]) => {
-        set(state => ({
-            currentSettings: { ...state.currentSettings, [key]: value },
-            isPatternDirty: !!state.selectedPatternId,
+        if (get().areControlsLocked) return;
+
+        // If a pattern loading animation is running, cancel it to give user control.
+        set(produce(draft => {
+            draft.patternTransition.isActive = false;
+            draft.transitionProgress = 1;
+            draft.previousGradient = null;
+            draft.previousBackgroundGradient = null;
+            draft.currentSettings[key] = value;
+            draft.isPatternDirty = !!draft.selectedPatternId;
         }));
     },
 
@@ -274,97 +299,50 @@ export const useTextureStore = createWithEqualityFn<State & Actions>((set, get):
     },
 
     loadPattern: (id) => {
-        const { project, activeSequenceIndex, currentSettings, animationFrameRef, lastAppliedSettingsRef } = get();
+        const { project, activeSequenceIndex, currentSettings, lastAppliedSettingsRef } = get();
         if (!project) return;
-        
+
         const activeSequence = project.sequences[activeSequenceIndex];
         const pattern = activeSequence.patterns.find(p => p.id === id);
         if (!pattern) return;
 
-        if (animationFrameRef) cancelAnimationFrame(animationFrameRef);
+        const endSettings = { ...currentSettings, ...pattern.settings };
+        const startSettings = { ...currentSettings };
         
-        // Ensure new settings from pattern have defaults from current state
-        const endSettings = { ...get().currentSettings, ...pattern.settings };
-        const startSettings = currentSettings;
-        const baseSettings = lastAppliedSettingsRef || startSettings;
-        
-        const settingsToApply: Partial<ControlSettings> = activeSequence.animateOnlyChanges
-            ? Object.fromEntries(Object.entries(endSettings).filter(([key, value]) =>
-                JSON.stringify(value) !== JSON.stringify(baseSettings[key as keyof ControlSettings])
-            ))
-            : endSettings;
-            
         const duration = activeSequence.interpolationSpeed * 1000;
 
         if (duration === 0) {
-            set({ 
-                currentSettings: endSettings, 
-                lastAppliedSettingsRef: endSettings, 
-                previousGradient: null, 
+            set({
+                currentSettings: endSettings,
+                lastAppliedSettingsRef: endSettings,
+                previousGradient: null,
                 previousBackgroundGradient: null,
-                transitionProgress: 1, 
-                selectedPatternId: id, 
-                isPatternDirty: false 
+                transitionProgress: 1,
+                selectedPatternId: id,
+                isPatternDirty: false,
+                patternTransition: { isActive: false, startTime: 0, duration: 0, startSettings: null, endSettings: null }
             });
             return;
         }
 
-        const gradientChanged = 'gradientColors' in settingsToApply;
-        const backgroundGradientChanged = 'backgroundGradientColors' in settingsToApply;
-        const concentricGradientChanged = 'concentric_gradientColors' in settingsToApply;
+        const gradientChanged = JSON.stringify(startSettings.gradientColors) !== JSON.stringify(endSettings.gradientColors);
+        const backgroundGradientChanged = JSON.stringify(startSettings.backgroundGradientColors) !== JSON.stringify(endSettings.backgroundGradientColors);
+        const concentricGradientChanged = JSON.stringify(startSettings.concentric_gradientColors) !== JSON.stringify(endSettings.concentric_gradientColors);
 
         set({
             previousGradient: gradientChanged ? startSettings.gradientColors : null,
             previousBackgroundGradient: backgroundGradientChanged ? startSettings.backgroundGradientColors : null,
             transitionProgress: (gradientChanged || backgroundGradientChanged || concentricGradientChanged) ? 0 : 1,
             selectedPatternId: id,
-            isPatternDirty: false
+            isPatternDirty: false,
+            patternTransition: {
+                isActive: true,
+                startTime: performance.now(),
+                duration,
+                startSettings: startSettings,
+                endSettings: endSettings
+            }
         });
-
-        let startTime: number | null = null;
-        const animate = (timestamp: number) => {
-            if (!startTime) startTime = timestamp;
-            const progress = Math.min((timestamp - startTime) / duration, 1);
-            
-            if (gradientChanged || backgroundGradientChanged || concentricGradientChanged) {
-                set({ transitionProgress: progress });
-            }
-
-            const newSettings = { ...get().currentSettings };
-
-            Object.entries(settingsToApply).forEach(([key, value]) => {
-                 const settingKey = key as keyof ControlSettings;
-
-                if (settingKey === 'gradientColors' || settingKey === 'backgroundGradientColors' || settingKey === 'concentric_gradientColors') {
-                     if (progress >= 1 && Array.isArray(value)) {
-                        (newSettings[settingKey]) = value;
-                    }
-                    return;
-                }
-               
-                if (typeof startSettings[settingKey] === 'number' && typeof value === 'number') {
-                    (newSettings[settingKey] as number) = startSettings[settingKey] as number + (value - (startSettings[settingKey] as number)) * progress;
-                } else if (progress >= 1 && typeof value === 'string') {
-                    (newSettings[settingKey] as string) = value;
-                }
-            });
-            
-            set({ currentSettings: newSettings });
-
-            if (progress < 1) {
-                set({ animationFrameRef: requestAnimationFrame(animate) });
-            } else {
-                set({ 
-                    animationFrameRef: null, 
-                    lastAppliedSettingsRef: endSettings, 
-                    currentSettings: { ...get().currentSettings, ...settingsToApply }, 
-                    previousGradient: null,
-                    previousBackgroundGradient: null,
-                    transitionProgress: 1 
-                });
-            }
-        };
-        set({ animationFrameRef: requestAnimationFrame(animate) });
     },
 
     deletePattern: (id) => {
@@ -397,7 +375,7 @@ export const useTextureStore = createWithEqualityFn<State & Actions>((set, get):
 
     // --- Sequencer ---
     setIsSequencerPlaying: (isPlaying) => {
-        const { project, sequencerTimeoutId } = get();
+        const { project } = get();
         if (!project) return;
         
         const newProject = produce(project, draft => {
@@ -405,70 +383,123 @@ export const useTextureStore = createWithEqualityFn<State & Actions>((set, get):
         });
         get().setProject(newProject);
 
-        if (sequencerTimeoutId) clearTimeout(sequencerTimeoutId);
-        
         if (isPlaying) {
             set({ sequencerCurrentStep: -1 }); // Reset to start on play
-            get()._tickSequencer();
-        } else {
-            set({ sequencerTimeoutId: null });
+            _masterAnimationLoopRef.sequencerClock = 0;
         }
     },
     
     setSequencerCurrentStep: (step) => {
         set({ sequencerCurrentStep: step });
     },
+
+    _masterAnimationLoop: (time) => {
+        const dt = time - _masterAnimationLoopRef.lastTime;
+        _masterAnimationLoopRef.lastTime = time;
+
+        const state = get();
+        const { project, activeSequenceIndex, patternTransition } = state;
+
+        let sequencerTicked = false;
+        
+        // --- 1. Sequencer Update (Highest Priority) ---
+        if (project?.globalSettings.isSequencerPlaying) {
+            _masterAnimationLoopRef.sequencerClock += dt;
+            const bpm = project.sequences[activeSequenceIndex].sequencer.bpm;
+            const stepInterval = (60 / bpm) * 1000 / 4; // 16th notes
+            
+            if (_masterAnimationLoopRef.sequencerClock >= stepInterval) {
+                _masterAnimationLoopRef.sequencerClock %= stepInterval;
+                get()._tickSequencer(); // This performs its own atomic state update
+                sequencerTicked = true;
+            }
+        }
+        
+        // --- 2. If Sequencer ticked, its state takes precedence. We only update rotation. ---
+        if (sequencerTicked) {
+            const { textureRotation, currentSettings: { textureRotationSpeed } } = get();
+            const newRotation = (textureRotation + textureRotationSpeed * 0.05) % 360;
+            set({ textureRotation: newRotation });
+        } 
+        // --- 3. Otherwise, run normal user-driven animations ---
+        else {
+            let nextState: Partial<State> = {};
+            let newSettings = { ...state.currentSettings };
+
+            // User-driven pattern transition
+            if (patternTransition.isActive && patternTransition.startSettings && patternTransition.endSettings) {
+                const elapsed = time - patternTransition.startTime;
+                const progress = Math.min(elapsed / patternTransition.duration, 1);
+                
+                nextState.transitionProgress = progress;
+
+                Object.entries(patternTransition.endSettings).forEach(([key, endValue]) => {
+                    const settingKey = key as keyof ControlSettings;
+                    const startValue = patternTransition.startSettings![settingKey];
+                    
+                    if (typeof startValue === 'number' && typeof endValue === 'number') {
+                        (newSettings[settingKey] as number) = lerp(startValue, endValue, progress);
+                    } else if (progress >= 1) {
+                         (newSettings[settingKey] as any) = endValue;
+                    }
+                });
+
+                if (progress >= 1) {
+                    nextState.patternTransition = { ...patternTransition, isActive: false };
+                    nextState.lastAppliedSettingsRef = patternTransition.endSettings;
+                    nextState.previousGradient = null;
+                    nextState.previousBackgroundGradient = null;
+                }
+            }
+
+            // Texture rotation
+            const newRotation = (state.textureRotation + newSettings.textureRotationSpeed * 0.05) % 360;
+
+            set({
+                ...nextState,
+                currentSettings: newSettings,
+                textureRotation: newRotation,
+            });
+        }
+        
+        _masterAnimationLoopRef.ref = requestAnimationFrame(get()._masterAnimationLoop);
+    },
     
     _tickSequencer: () => {
         const { project, activeSequenceIndex, selectedPatternId } = get();
-        if (!project || !project.globalSettings.isSequencerPlaying) return;
+        if (!project) return;
         
         const activeSequence = project.sequences[activeSequenceIndex];
-        const { sequencer } = activeSequence;
-        const numSteps = sequencer.numSteps;
+        const { sequencer, patterns } = activeSequence;
+        const { numSteps, propertyTracks } = sequencer;
         
         const nextStep = (get().sequencerCurrentStep + 1) % numSteps;
-        set({ sequencerCurrentStep: nextStep });
-        
         const patternIdToLoad = sequencer.steps[nextStep];
         
-        // --- 1. Load base pattern if it changes ---
-        if (patternIdToLoad && patternIdToLoad !== selectedPatternId) {
-            get().loadPattern(patternIdToLoad);
+        const basePattern = patterns.find(p => p.id === patternIdToLoad) || patterns.find(p => p.id === selectedPatternId);
+        if (!basePattern) {
+            set({ sequencerCurrentStep: nextStep });
+            return;
         }
 
-        // --- 2. Calculate and apply property automation ---
-        const basePattern = activeSequence.patterns.find(p => p.id === (patternIdToLoad || selectedPatternId));
-        
-        // Start with the last applied settings to avoid jumps when automation starts/stops
-        let automatedSettings = { ...get().currentSettings, ...(basePattern?.settings || {}) };
+        const finalSettingsForTick = { ...get().currentSettings, ...basePattern.settings };
 
-        const { propertyTracks } = sequencer;
         if (propertyTracks && propertyTracks.length > 0) {
-            const rendererId = project.globalSettings.renderer;
-            const renderer = renderers[rendererId];
-            
-            const sliderConfigs = renderer?.controlSchema
-                .flatMap(section => section.controls)
+            const sliderConfigs = Object.values(renderers)
+                .flatMap(r => r.controlSchema)
+                .flatMap(s => s.controls)
                 .filter(c => c.type === 'slider')
-                .reduce((acc, c: any) => {
-                    acc[c.id] = c;
-                    return acc;
-                }, {} as { [key: string]: any });
+                .reduce((acc, c: any) => { acc[c.id] = c; return acc; }, {} as Record<string, SliderControlConfig>);
 
             propertyTracks.forEach(track => {
                 const sortedKeyframes = [...track.keyframes].sort((a, b) => a.step - b.step);
                 if (sortedKeyframes.length === 0) return;
 
-                let prevKeyframe = sortedKeyframes.find(k => k.step <= nextStep) || sortedKeyframes[sortedKeyframes.length - 1];
-                let nextKeyframe = sortedKeyframes.find(k => k.step > nextStep) || sortedKeyframes[0];
+                const keyframesBefore = sortedKeyframes.filter(k => k.step <= nextStep);
+                const prevKeyframe = keyframesBefore.length > 0 ? keyframesBefore[keyframesBefore.length - 1] : sortedKeyframes[sortedKeyframes.length - 1];
 
-                if (sortedKeyframes.every(k => k.step > nextStep)) {
-                    prevKeyframe = sortedKeyframes[sortedKeyframes.length - 1];
-                }
-                 if (sortedKeyframes.every(k => k.step <= nextStep)) {
-                    nextKeyframe = sortedKeyframes[0];
-                }
+                const keyframesAfter = sortedKeyframes.filter(k => k.step > nextStep);
+                const nextKeyframe = keyframesAfter.length > 0 ? keyframesAfter[0] : sortedKeyframes[0];
                 
                 let interpolatedValue: number;
                 if (prevKeyframe.step === nextKeyframe.step) {
@@ -476,30 +507,32 @@ export const useTextureStore = createWithEqualityFn<State & Actions>((set, get):
                 } else {
                     let stepDiff = nextKeyframe.step - prevKeyframe.step;
                     let progress = nextStep - prevKeyframe.step;
-                    
-                    if (stepDiff < 0) { // Loop around
+                    if (stepDiff < 0) {
                         stepDiff += numSteps;
                         if (progress < 0) progress += numSteps;
                     }
-                    const t = progress / stepDiff;
+                    const t = stepDiff > 0 ? progress / stepDiff : 1;
                     interpolatedValue = lerp(prevKeyframe.value, nextKeyframe.value, t);
                 }
 
-                if (sliderConfigs && sliderConfigs[track.property]) {
-                     (automatedSettings as any)[track.property] = interpolatedValue;
+                if (sliderConfigs[track.property]) {
+                     (finalSettingsForTick as any)[track.property] = interpolatedValue;
                 }
             });
         }
         
-        // Apply the final computed settings for this step
-        set({ 
-            currentSettings: automatedSettings,
-            lastAppliedSettingsRef: automatedSettings, // Update ref for smooth transitions
+        // Atomically update the state for this tick, overriding any user transition
+        set({
+            currentSettings: finalSettingsForTick,
+            selectedPatternId: basePattern.id,
+            isPatternDirty: false,
+            lastAppliedSettingsRef: finalSettingsForTick,
+            transitionProgress: 1,
+            patternTransition: { isActive: false, startTime: 0, duration: 0, startSettings: null, endSettings: null },
+            previousGradient: null,
+            previousBackgroundGradient: null,
+            sequencerCurrentStep: nextStep,
         });
-        
-        const interval = (60 / sequencer.bpm) * 1000 / 4;
-        const timeoutId = window.setTimeout(get()._tickSequencer, interval);
-        set({ sequencerTimeoutId: timeoutId });
     },
 
     setSequencerBpm: (bpm) => {
@@ -616,7 +649,6 @@ export const useTextureStore = createWithEqualityFn<State & Actions>((set, get):
         get().setProject(newProject);
     },
 
-
     // --- MIDI ---
     connectMidi: async () => {
         if (!navigator.requestMIDIAccess) {
@@ -682,19 +714,18 @@ export const useTextureStore = createWithEqualityFn<State & Actions>((set, get):
             if (startTime) {
                 const duration = event.timeStamp - startTime;
                 
-                // --- Pattern Triggering/Learning Logic ---
-                if (duration > 500) { // Long press
+                if (duration > 500) {
                     get().saveCurrentPattern(data1);
-                } else { // Short press
+                } else {
                     const { learningPatternMidiNote, project, activeSequenceIndex } = get();
-                    if (learningPatternMidiNote) { // Assign note to pattern
+                    if (learningPatternMidiNote) {
                         const newProject = produce(project!, draft => {
                             const pattern = draft.sequences[activeSequenceIndex].patterns.find(p => p.id === learningPatternMidiNote);
                             if (pattern) pattern.midiNote = data1;
                         });
                         get().setProject(newProject);
                         set({ learningPatternMidiNote: null });
-                    } else { // Load pattern
+                    } else {
                         const patternToLoad = project?.sequences[activeSequenceIndex].patterns.find(p => p.midiNote === data1);
                         if (patternToLoad) get().loadPattern(patternToLoad.id);
                     }
@@ -713,13 +744,13 @@ export const useTextureStore = createWithEqualityFn<State & Actions>((set, get):
             const value = data2;
             const { midi: { learningControl }, project } = get();
             
-            if (learningControl) { // Learn a new mapping
+            if (learningControl) {
                 const newProject = produce(project!, draft => {
                     draft.globalSettings.midiMappings[learningControl] = controller;
                 });
                 get().setProject(newProject);
                 set(state => ({ midi: { ...state.midi, learningControl: null } }));
-            } else { // Apply an existing mapping
+            } else {
                 const controlId = Object.keys(project!.globalSettings.midiMappings).find(
                     key => project!.globalSettings.midiMappings[key] === controller
                 );
@@ -746,4 +777,5 @@ export const useTextureStore = createWithEqualityFn<State & Actions>((set, get):
         });
         get().setProject(newProject);
     },
+    setAreControlsLocked: (locked) => set({ areControlsLocked: locked }),
 }), shallow);
