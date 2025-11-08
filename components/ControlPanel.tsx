@@ -3,6 +3,7 @@ import React, { useRef } from 'react';
 import { useTextureStore } from '../store';
 import { TrashIcon, DownloadIcon, UploadIcon } from './icons';
 import { renderers } from './renderers';
+import { Button } from './shared/Button';
 import MidiLearnButton from './renderers/shared/MidiLearnButton';
 import CollapsibleSection from './renderers/shared/CollapsibleSection';
 import RendererControls from './renderers/shared/RendererControls';
@@ -67,35 +68,37 @@ const ControlPanel: React.FC = () => {
   const rendererSchema = renderers[renderer]?.controlSchema;
 
   return (
-    <div className="divide-y divide-gray-700">
+    <div className="divide-y divide-gray-700 text-sm">
         <CollapsibleSection title="Configuración MIDI" defaultOpen>
             {midiConnectionError ? (
-                <div className="mb-4 bg-red-900/60 border border-red-700 text-red-200 px-4 py-3 rounded-lg relative text-sm" role="alert">
-                    <strong className="font-bold block mb-2">Error de Conexión MIDI</strong>
+                <div className="mb-3 bg-red-900/60 border border-red-700 text-red-200 px-3 py-2 rounded-lg relative text-xs" role="alert">
+                    <strong className="font-bold block mb-1">Error de Conexión MIDI</strong>
                     <p className="mt-1">{midiConnectionError}</p>
-                     <div className="mt-4 flex items-center space-x-3">
-                        <button
+                     <div className="mt-3 flex items-center space-x-2">
+                        <Button
+                            variant="primary"
+                            size="sm"
                             onClick={connectMidi}
-                            className="bg-cyan-600 hover:bg-cyan-700 text-white font-semibold py-2 px-3 rounded-md text-xs transition-colors"
                         >
                             Reintentar
-                        </button>
-                         <button
+                        </Button>
+                        <Button
+                            variant="secondary"
+                            size="sm"
                             onClick={clearMidiError}
-                            className="bg-gray-600 hover:bg-gray-500 text-white font-semibold py-2 px-3 rounded-md text-xs transition-colors"
                         >
                             Cerrar
-                        </button>
+                        </Button>
                     </div>
                 </div>
             ) : midiDevices.length > 0 ? (
-                <div className="space-y-3">
-                     <label htmlFor="midiDevice" className="font-medium text-gray-300">Dispositivo de Entrada</label>
+                <div className="space-y-2">
+                     <label htmlFor="midiDevice" className="font-medium text-gray-300 text-xs">Dispositivo de Entrada</label>
                         <select 
                             id="midiDevice"
                             value={selectedMidiDevice || ''}
                             onChange={(e) => selectMidiDevice(e.target.value)}
-                            className="w-full bg-gray-700 border border-gray-600 text-gray-200 rounded-lg p-2 focus:ring-cyan-500 focus:border-cyan-500"
+                            className="w-full bg-gray-700 border border-gray-600 text-gray-200 rounded-lg p-2 focus:ring-cyan-500 focus:border-cyan-500 text-xs"
                         >
                             <option value="">-- No Conectado --</option>
                             {midiDevices.map(device => (
@@ -104,40 +107,43 @@ const ControlPanel: React.FC = () => {
                         </select>
                 </div>
             ) : (
-                <button
+                <Button
+                    variant="primary"
                     onClick={connectMidi}
-                    className="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-cyan-500"
+                    className="w-full"
                 >
                     Conectar MIDI
-                </button>
+                </Button>
             )}
         </CollapsibleSection>
 
         <CollapsibleSection title="Patrones">
-            <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                    <button
+            <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                    <Button
+                        variant="primary"
                         onClick={() => saveCurrentPattern()}
-                        className="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
+                        className="w-full"
                     >
                         Guardar como Nuevo
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                        variant="primary"
                         onClick={overwriteSelectedPattern}
                         disabled={!selectedPatternId}
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed"
+                        className="w-full"
                         title={!selectedPatternId ? "Carga un patrón para sobrescribirlo" : "Sobrescribir el patrón seleccionado"}
                     >
                         Sobrescribir
-                    </button>
+                    </Button>
                 </div>
-                <div className="space-y-2 pt-2">
-                    <h4 className="font-medium text-gray-400">Memorias Guardadas</h4>
+                <div className="space-y-1.5 pt-1.5">
+                    <h4 className="font-medium text-gray-400 text-xs">Memorias Guardadas</h4>
                     {activeSequence.patterns.length === 0 ? (
-                        <p className="text-gray-500 text-sm">No hay patrones guardados.</p>
+                        <p className="text-gray-500 text-xs">No hay patrones guardados.</p>
                     ) : (
                         activeSequence.patterns.map(pattern => (
-                            <div key={pattern.id} className="flex items-center bg-gray-700/50 p-2 rounded-lg space-x-2">
+                            <div key={pattern.id} className="flex items-center bg-gray-700/50 p-1.5 rounded-lg space-x-1.5">
                                 <span
                                     className={`w-2.5 h-2.5 rounded-full flex-shrink-0 transition-all duration-200 ${
                                         selectedPatternId === pattern.id 
@@ -146,10 +152,10 @@ const ControlPanel: React.FC = () => {
                                     }`}
                                     aria-hidden="true"
                                 />
-                                <button onClick={() => loadPattern(pattern.id)} className="flex-grow text-left px-2 py-1 hover:bg-gray-600 rounded-md transition-colors">
+                                <button onClick={() => loadPattern(pattern.id)} className="flex-grow text-left px-1.5 py-1 hover:bg-gray-600 rounded-md transition-colors text-xs">
                                     {pattern.name}
                                 </button>
-                                <span className="text-xs font-mono text-cyan-400 w-12 text-center">
+                                <span className="text-[10px] font-mono text-cyan-400 w-10 text-center">
                                     {pattern.midiNote !== undefined ? `N: ${pattern.midiNote}` : '-'}
                                 </span>
                                 <MidiLearnButton
@@ -159,9 +165,15 @@ const ControlPanel: React.FC = () => {
                                     learnTitle={`Asignar nota MIDI a ${pattern.name}`}
                                     clearTitle={`Limpiar nota de ${pattern.name}`}
                                 />
-                                <button onClick={() => deletePattern(pattern.id)} className="w-10 h-10 flex-shrink-0 rounded-lg flex items-center justify-center bg-gray-600 hover:bg-red-500/80 text-gray-300 hover:text-white transition-colors" aria-label={`Eliminar ${pattern.name}`}>
-                                    <TrashIcon className="w-5 h-5"/>
-                                </button>
+                                <Button
+                                    variant="danger"
+                                    size="icon"
+                                    onClick={() => deletePattern(pattern.id)}
+                                    icon={<TrashIcon className="w-4 h-4"/>}
+                                    iconOnly
+                                    className="w-8 h-8 flex-shrink-0"
+                                    aria-label={`Eliminar ${pattern.name}`}
+                                />
                             </div>
                         ))
                     )}
@@ -172,20 +184,21 @@ const ControlPanel: React.FC = () => {
         {rendererSchema && <RendererControls schema={rendererSchema} />}
 
         <CollapsibleSection title="Configuración Global">
-            <div className="space-y-4">
+            <div className="space-y-3">
                 <div>
-                    <h4 className="font-medium text-gray-300">Gestión de Datos</h4>
-                    <p className="text-sm text-gray-400 mt-1">
+                    <h4 className="font-medium text-gray-300 text-xs">Gestión de Datos</h4>
+                    <p className="text-xs text-gray-400 mt-1">
                         Guarda o carga tu configuración (patrones y mapeos MIDI) en un archivo.
                     </p>
-                    <div className="grid grid-cols-2 gap-4 mt-3">
-                        <button 
-                            onClick={exportProject} 
-                            className="flex items-center justify-center w-full bg-gray-600 hover:bg-gray-500 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
+                    <div className="grid grid-cols-2 gap-3 mt-2">
+                        <Button 
+                            variant="secondary"
+                            onClick={exportProject}
+                            icon={<DownloadIcon className="w-5 h-5" />}
+                            className="w-full"
                         >
-                            <DownloadIcon className="w-5 h-5 mr-2" />
                             Exportar
-                        </button>
+                        </Button>
                         <input
                             type="file"
                             ref={fileInputRef}
@@ -193,25 +206,26 @@ const ControlPanel: React.FC = () => {
                             className="hidden"
                             accept=".json"
                         />
-                        <button 
-                            onClick={handleImportClick} 
-                            className="flex items-center justify-center w-full bg-cyan-600 hover:bg-cyan-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
+                        <Button 
+                            variant="primary"
+                            onClick={handleImportClick}
+                            icon={<UploadIcon className="w-5 h-5" />}
+                            className="w-full"
                         >
-                             <UploadIcon className="w-5 h-5 mr-2" />
                             Importar
-                        </button>
+                        </Button>
                     </div>
                 </div>
-                 <div className="pt-4 mt-4 border-t border-gray-700">
-                    <h4 className="font-medium text-gray-300">Motor de Renderizado</h4>
-                    <p className="text-sm text-gray-400 mt-1 mb-3">
+                 <div className="pt-3 mt-3 border-t border-gray-700">
+                    <h4 className="font-medium text-gray-300 text-xs">Motor de Renderizado</h4>
+                    <p className="text-xs text-gray-400 mt-1 mb-2">
                         Selecciona el motor para generar los visuales. WebGL ofrece un rendimiento superior.
                     </p>
                     <select 
                         id="renderer"
                         value={renderer}
                         onChange={(e) => setRenderer(e.target.value)}
-                        className="w-full bg-gray-700 border border-gray-600 text-gray-200 rounded-lg p-2 focus:ring-cyan-500 focus:border-cyan-500"
+                        className="w-full bg-gray-700 border border-gray-600 text-gray-200 rounded-lg p-2 focus:ring-cyan-500 focus:border-cyan-500 text-xs"
                     >
                         {Object.values(renderers).map(r => (
                             <option key={r.id} value={r.id}>{r.name}</option>

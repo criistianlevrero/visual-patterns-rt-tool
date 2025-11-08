@@ -3,6 +3,7 @@ import React, { useState, useMemo } from 'react';
 import { useTextureStore } from '../../store';
 import { renderers } from '../renderers';
 import { PlusIcon } from '../shared/icons';
+import { Button } from '../shared/Button';
 import PropertyTrackLane from './PropertyTrackLane';
 import type { ControlSettings } from '../../types';
 
@@ -58,11 +59,12 @@ const PropertySequencer: React.FC = () => {
 
     return (
         <div className="space-y-4">
-            <div className="flex items-center space-x-2 p-3 bg-gray-900/50 rounded-lg">
+            {/* Add track control - responsive */}
+            <div className="flex flex-col sm:flex-row gap-2 p-3 bg-gray-900/50 rounded-lg">
                 <select
                     value={selectedProperty}
                     onChange={(e) => setSelectedProperty(e.target.value)}
-                    className="w-full bg-gray-700 border border-gray-600 text-gray-200 rounded-lg p-2 focus:ring-cyan-500 focus:border-cyan-500"
+                    className="flex-1 bg-gray-700 border border-gray-600 text-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 text-sm"
                 >
                     <option value="" disabled>Seleccione una propiedad...</option>
                     {allAnimatableProps.map(prop => (
@@ -72,24 +74,27 @@ const PropertySequencer: React.FC = () => {
                             disabled={usedProperties.has(prop.id)}
                             className={usedProperties.has(prop.id) ? 'text-gray-500' : ''}
                         >
-                            {prop.category} &gt; {prop.label}
+                            {prop.category} › {prop.label}
                         </option>
                     ))}
                 </select>
-                <button 
+                <Button 
+                    variant="primary"
                     onClick={handleAddTrack}
                     disabled={!selectedProperty}
-                    className="flex-shrink-0 flex items-center space-x-2 bg-cyan-600 hover:bg-cyan-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed"
+                    icon={<PlusIcon className="w-5 h-5"/>}
                 >
-                    <PlusIcon className="w-5 h-5"/>
-                    <span>Añadir Pista</span>
-                </button>
+                    <span className="hidden sm:inline">Añadir Pista</span>
+                    <span className="sm:hidden">Añadir</span>
+                </Button>
             </div>
             
+            {/* Track lanes */}
             <div className="space-y-3">
                 {propertyTracks.length === 0 ? (
-                     <div className="text-center py-4 text-gray-500 text-sm">
-                        Añade una pista para empezar a automatizar una propiedad.
+                    <div className="text-center py-8 text-gray-500 text-sm">
+                        <div className="mb-2">🎹</div>
+                        <div>Añade una pista para empezar a automatizar propiedades.</div>
                     </div>
                 ) : (
                     propertyTracks.map(track => (

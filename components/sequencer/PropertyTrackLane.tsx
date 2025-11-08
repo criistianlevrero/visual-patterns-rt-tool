@@ -3,6 +3,8 @@ import React, { useMemo, useState } from 'react';
 import { useTextureStore } from '../../store';
 import { renderers } from '../renderers';
 import { TrashIcon } from '../shared/icons';
+import { Button } from '../shared/Button';
+import { SequencerCell } from '../shared/SequencerCell';
 import SliderInput from '../controls/SliderInput';
 // FIX: SliderControlConfig will be available from ../types after the type definitions are moved.
 import type { PropertyTrack, SliderControlConfig } from '../../types';
@@ -63,65 +65,89 @@ const PropertyTrackLane: React.FC<PropertyTrackLaneProps> = ({ track }) => {
     };
 
     return (
-        <div className="bg-gray-800/60 p-3 rounded-lg">
-            <div className="flex justify-between items-center mb-2">
-                <div>
-                     <span className="font-semibold text-gray-300">{controlInfo?.label || track.property}</span>
-                     <span className="text-xs text-gray-500 ml-2">({controlInfo?.category})</span>
+        <div className="bg-gray-800/60 rounded-lg overflow-hidden">
+            {/* Track header */}
+            <div className="flex justify-between items-center p-3 bg-gray-900/40">
+                <div className="flex-1 min-w-0">
+                     <div className="font-semibold text-gray-300 truncate">{controlInfo?.label || track.property}</div>
+                     <div className="text-xs text-gray-500 truncate">
+                        {controlInfo?.category}
+                     </div>
                 </div>
-                 <button 
+                <Button 
+                    variant="ghost"
+                    size="icon"
                     onClick={() => removePropertyTrack(track.id)}
-                    className="p-1 text-gray-500 hover:text-red-400"
+                    icon={<TrashIcon className="w-4 h-4"/>}
+                    iconOnly
+                    className="ml-2 hover:text-red-400 hover:bg-red-500/10"
                     title="Eliminar pista"
-                >
-                    <TrashIcon className="w-4 h-4"/>
-                </button>
+                />
             </div>
 
-            {/* Step Numbers Header */}
-            <div className="grid" style={{ gridTemplateColumns: `repeat(${numSteps}, minmax(0, 1fr))` }}>
-                {Array.from({ length: numSteps }).map((_, i) => (
-                    <div key={`header-${i}`} className="text-center text-xs text-gray-500 pb-1">
-                        {i + 1}
+            {/* Timeline container - scrollable horizontally */}
+            <div className="overflow-x-auto">
+                <div className="inline-block min-w-full">
+                    {/* Step Numbers Header */}
+                    <div className="grid px-3 pt-2" style={{ gridTemplateColumns: `repeat(${numSteps}, minmax(2.5rem, 1fr))` }}>
+                        {Array.from({ length: numSteps }).map((_, i) => (
+                            <div 
+                                key={`header-${i}`} 
+                                className={`text-center text-[10px] font-medium pb-1 ${
+                                    sequencerCurrentStep === i ? 'text-cyan-400' : 'text-gray-500'
+                                }`}
+                            >
+                                {i + 1}
+                            </div>
+                        ))}
                     </div>
-                ))}
-            </div>
 
-            <div className="relative grid items-center" style={{ gridTemplateColumns: `repeat(${numSteps}, minmax(0, 1fr))`}}>
-                {/* Timeline background and guidelines */}
-                {Array.from({ length: numSteps }).map((_, stepIndex) => (
-                    <div
-                        key={stepIndex}
-                        onClick={() => handleStepClick(stepIndex)}
-                        className={`
-                            h-12 hover:bg-gray-600/50 cursor-pointer transition-colors duration-150 rounded-sm
-                            ${sequencerCurrentStep === stepIndex ? 'bg-cyan-900/40' : 'bg-gray-700/50'}
-                            ${stepIndex > 0 ? 'border-l' : ''}
-                            ${(stepIndex + 1) % 4 === 0 ? 'border-gray-500' : 'border-gray-600'}
-                        `}
-                    />
-                ))}
-                
-                {/* Keyframes */}
-                {track.keyframes.map(keyframe => (
-                    <div 
-                        key={keyframe.step}
-                        className={`absolute top-1/2 w-3 h-3 rounded-full shadow-lg border-2 border-gray-900 pointer-events-none transition-all ${
-                            selectedStep === keyframe.step ? 'bg-yellow-400 w-4 h-4' : 'bg-cyan-400'
-                        }`}
-                        style={{ 
-                            left: `calc(${(keyframe.step / numSteps) * 100}% + ${(0.5 / numSteps) * 100}%)`, 
-                            transform: 'translate(-50%, -50%)' 
-                        }}
-                    />
-                ))}
+                    {/* Timeline grid */}
+                    <div className="relative px-3 pb-3">
+                        <div className="relative grid items-center gap-px" style={{ gridTemplateColumns: `repeat(${numSteps}, minmax(2.5rem, 1fr))`}}>
+                            {/* Timeline background and guidelines */}
+                            {Array.from({ length: numSteps }).map((_, stepIndex) => {
+                                const hasKeyframe = track.keyframes.some(k => k.step === stepIndex);
+                                const isCurrentStep = sequencerCurrentStep === stepIndex;
+                                
+                                return (
+                                    <div key={stepIndex} className={`h-12 ${isCurrentStep ? 'bg-cyan-900/40 ring-1 ring-cyan-500/30' : ''}`}>
+                                        <SequencerCell
+                                            variant="step"
+                                            active={hasKeyframe}
+                                            selected={selectedStep === stepIndex}
+                                            onClick={() => handleStepClick(stepIndex)}
+                                            className="w-full h-full"
+                                        />
+                                    </div>
+                                );
+                            })}
+                            
+                            {/* Keyframes */}
+                            {track.keyframes.map(keyframe => (
+                                <div 
+                                    key={keyframe.step}
+                                    className={`absolute top-1/2 rounded-full shadow-lg border-2 border-gray-900 pointer-events-none transition-all ${
+                                        selectedStep === keyframe.step 
+                                            ? 'bg-yellow-400 w-4 h-4 scale-125' 
+                                            : 'bg-cyan-400 w-3 h-3'
+                                    }`}
+                                    style={{ 
+                                        left: `calc(${(keyframe.step / numSteps) * 100}% + ${(0.5 / numSteps) * 100}%)`, 
+                                        transform: 'translate(-50%, -50%)' 
+                                    }}
+                                />
+                            ))}
+                        </div>
+                    </div>
+                </div>
             </div>
 
             {/* Keyframe Editor */}
             {selectedStep !== null && selectedKeyframe && controlInfo && (
-                <div className="mt-4 p-3 bg-gray-900/50 rounded-lg">
+                <div className="p-3 bg-gray-900/40 border-t border-gray-700">
                      <SliderInput
-                        label={`Valor en Paso ${selectedStep + 1}`}
+                        label={`Paso ${selectedStep + 1}`}
                         value={selectedKeyframe.value}
                         onChange={(e) => updateKeyframeValue(track.id, selectedStep, Number(e.target.value))}
                         min={controlInfo.min}

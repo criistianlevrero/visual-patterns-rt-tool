@@ -1,10 +1,11 @@
 
 
+
+
 import React from 'react';
 import { PlusIcon, TrashIcon, SplitIcon } from './icons';
-import type { GradientColor } from '../types';
-
-interface GradientEditorProps {
+import { Button } from './shared/Button';
+import type { GradientColor } from '../types';interface GradientEditorProps {
   title: string;
   colors: GradientColor[];
   onColorsChange: (newColors: GradientColor[]) => void;
@@ -50,48 +51,53 @@ const GradientEditor: React.FC<GradientEditorProps> = ({ title, colors, onColors
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div className="flex justify-between items-center">
-        <h3 className="text-md font-semibold text-gray-200">{title}</h3>
-        <button
+        <h3 className="text-sm font-semibold text-gray-200">{title}</h3>
+        <Button
+          variant="primary"
+          size="sm"
           onClick={addColor}
-          className="flex items-center space-x-2 bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-1 px-3 rounded-md transition-colors"
+          icon={<PlusIcon className="w-3.5 h-3.5" />}
           aria-label="Añadir color"
         >
-            <PlusIcon className="w-4 h-4" />
-            <span>Añadir</span>
-        </button>
+          Añadir
+        </Button>
       </div>
 
-      <div className="space-y-3 max-h-48 overflow-y-auto pr-2">
+      <div className="space-y-2 max-h-40 overflow-y-auto pr-2">
         {colors.map((color, index) => (
-          <div key={color.id} className="flex items-center space-x-3">
+          <div key={color.id} className="flex items-center space-x-2">
              <input
                 type="color"
                 value={color.color}
                 onChange={(e) => handleColorChange(color.id, e.target.value)}
-                className="p-0 border-2 border-gray-600 rounded-md cursor-pointer appearance-none bg-transparent w-8 h-8 flex-shrink-0"
+                className="p-0 border-2 border-gray-600 rounded-md cursor-pointer appearance-none bg-transparent w-7 h-7 flex-shrink-0"
                 style={{'backgroundColor': color.color}}
                 aria-label={`Color ${index + 1}`}
             />
-            <span className="flex-grow font-mono text-gray-400 select-all">{color.color.toUpperCase()}</span>
-            <button
+            <span className="flex-grow font-mono text-gray-400 select-all text-xs">{color.color.toUpperCase()}</span>
+            <Button
+                variant={color.hardStop ? 'primary' : 'secondary'}
+                size="icon"
                 onClick={() => handleHardStopToggle(color.id)}
-                className={`p-2 rounded-md transition-colors ${color.hardStop ? 'bg-cyan-600 text-white' : 'bg-gray-600 hover:bg-gray-500 text-gray-300'}`}
+                icon={<SplitIcon className="w-3.5 h-3.5" />}
+                iconOnly
                 title={color.hardStop ? "Suavizar transición de color" : "Crear quiebre de color"}
                 aria-pressed={color.hardStop}
                 aria-label={color.hardStop ? `Suavizar transición para el color ${index + 1}` : `Crear quiebre para el color ${index + 1}`}
-            >
-                <SplitIcon className="w-4 h-4" />
-            </button>
-            <button
+                className="w-7 h-7"
+            />
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => removeColor(color.id)}
-              className="p-2 text-gray-500 hover:text-red-400 disabled:text-gray-700 disabled:cursor-not-allowed transition-colors"
+              icon={<TrashIcon className="w-4 h-4" />}
+              iconOnly
               disabled={colors.length <= minColors}
+              className="hover:text-red-400 w-7 h-7"
               aria-label={`Eliminar color ${index + 1}`}
-            >
-              <TrashIcon className="w-5 h-5" />
-            </button>
+            />
           </div>
         ))}
       </div>
