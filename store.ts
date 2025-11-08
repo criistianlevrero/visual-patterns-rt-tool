@@ -35,7 +35,7 @@ interface State {
     transitionProgress: number;
     midi: MidiState;
     midiLog: MidiLogEntry[];
-    viewportMode: 'default' | 'desktop' | 'mobile';
+    viewportMode: 'horizontal' | 'vertical';
 }
 
 interface Actions {
@@ -82,7 +82,7 @@ interface Actions {
     
     // UI and Logs
     clearMidiLog: () => void;
-    setViewportMode: (mode: 'default' | 'desktop' | 'mobile') => void;
+    setViewportMode: (mode: 'horizontal' | 'vertical') => void;
     setRenderer: (renderer: string) => void;
 }
 
@@ -140,7 +140,7 @@ export const useTextureStore = createWithEqualityFn<State & Actions>((set, get):
         connectionError: null,
     },
     midiLog: [],
-    viewportMode: 'default',
+    viewportMode: 'horizontal',
 
     // --- Actions ---
 

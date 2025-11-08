@@ -1,8 +1,8 @@
 
 import React from 'react';
-import { DesktopIcon, MobileIcon, AspectRatioIcon } from '../shared/icons';
+import { DesktopIcon, MobileIcon } from '../shared/icons';
 
-type ViewportMode = 'default' | 'desktop' | 'mobile';
+type ViewportMode = 'horizontal' | 'vertical';
 
 interface ViewportControlsProps {
   mode: ViewportMode;
@@ -17,26 +17,18 @@ const ViewportControls: React.FC<ViewportControlsProps> = ({ mode, onModeChange 
   return (
     <div className="absolute top-3 right-3 z-10 bg-gray-800/80 backdrop-blur-sm p-1 rounded-lg flex items-center space-x-1">
       <button
-        onClick={() => onModeChange('default')}
-        className={`${buttonStyle} ${mode === 'default' ? activeStyle : inactiveStyle}`}
-        aria-label="Vista por defecto"
-        title="Vista por defecto"
-      >
-        <AspectRatioIcon className="w-5 h-5" />
-      </button>
-      <button
-        onClick={() => onModeChange('desktop')}
-        className={`${buttonStyle} ${mode === 'desktop' ? activeStyle : inactiveStyle}`}
-        aria-label="Simular vista de escritorio"
-        title="Simular vista de escritorio (16:9)"
+        onClick={() => onModeChange('horizontal')}
+        className={`${buttonStyle} ${mode === 'horizontal' ? activeStyle : inactiveStyle}`}
+        aria-label="Vista horizontal"
+        title="Vista horizontal (16:9)"
       >
         <DesktopIcon className="w-5 h-5" />
       </button>
       <button
-        onClick={() => onModeChange('mobile')}
-        className={`${buttonStyle} ${mode === 'mobile' ? activeStyle : inactiveStyle}`}
-        aria-label="Simular vista de móvil"
-        title="Simular vista de móvil (9:16)"
+        onClick={() => onModeChange('vertical')}
+        className={`${buttonStyle} ${mode === 'vertical' ? activeStyle : inactiveStyle}`}
+        aria-label="Vista vertical"
+        title="Vista vertical (9:16)"
       >
         <MobileIcon className="w-5 h-5" />
       </button>

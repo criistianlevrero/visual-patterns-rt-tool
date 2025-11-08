@@ -123,13 +123,13 @@ const App: React.FC<AppProps> = ({ initialProject }) => {
               </div>
               
               <div className="lg:col-span-2 flex flex-col gap-4">
-                <div className={`
-                    relative bg-gray-800/50 p-3 rounded-xl shadow-2xl border border-gray-700
-                    ${viewportMode === 'desktop' ? 'w-full aspect-video' : ''}
-                    ${viewportMode === 'mobile' ? 'w-full max-w-sm mx-auto aspect-[9/16]' : 'w-full aspect-square'}
-                `}>
+                <div className="relative bg-gray-800/50 p-3 rounded-xl shadow-2xl border border-gray-700">
                     <ViewportControls mode={viewportMode} onModeChange={setViewportMode} />
-                    <div className="w-full h-full overflow-hidden rounded-xl bg-gray-800">
+                    <div className={
+                      viewportMode === 'horizontal'
+                        ? "w-full aspect-video overflow-hidden rounded-xl bg-gray-800"
+                        : "w-full max-w-sm mx-auto aspect-[9/16] overflow-hidden rounded-xl bg-gray-800"
+                    }>
                       {CanvasComponent ? (
                         <CanvasComponent className="w-full h-full" />
                       ) : (
