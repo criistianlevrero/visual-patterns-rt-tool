@@ -7,6 +7,7 @@ import { FishIcon, ConsoleIcon, EnterFullscreenIcon, ExitFullscreenIcon, Setting
 import MidiConsole from './components/midi/MidiConsole';
 import ViewportControls from './components/controls/ViewportControls';
 import Sequencer from './components/sequencer/Sequencer';
+import SequenceManager from './components/shared/SequenceManager';
 import DebugOverlay from './components/debug/DebugOverlay';
 import { env } from './config';
 import type { Project } from './types';
@@ -99,11 +100,16 @@ const App: React.FC<AppProps> = ({ initialProject }) => {
           <header className="bg-gray-800/50 backdrop-blur-sm border-b border-gray-700">
             <div className="container mx-auto px-3 sm:px-4 lg:px-6">
               <div className="flex items-center justify-between h-12">
-                <div className="flex items-center space-x-2">
-                  <FishIcon className="h-6 w-6 text-cyan-400" />
-                  <h1 className="text-base md:text-lg font-bold text-gray-50">
-                    Generador de Textura de Escamas
-                  </h1>
+                <div className="flex items-center space-x-4">
+                  <div className="flex items-center space-x-2">
+                    <FishIcon className="h-6 w-6 text-cyan-400" />
+                    <h1 className="text-base md:text-lg font-bold text-gray-50">
+                      Generador de Textura de Escamas
+                    </h1>
+                  </div>
+                  <div className="hidden md:block">
+                    <SequenceManager />
+                  </div>
                 </div>
                 <button
                   onClick={toggleFullscreen}
@@ -112,6 +118,10 @@ const App: React.FC<AppProps> = ({ initialProject }) => {
                 >
                   <EnterFullscreenIcon className="w-6 h-6" />
                 </button>
+              </div>
+              {/* Mobile Sequence Manager */}
+              <div className="md:hidden pb-3 pt-2 border-t border-gray-700/50 mt-2">
+                <SequenceManager />
               </div>
             </div>
           </header>
