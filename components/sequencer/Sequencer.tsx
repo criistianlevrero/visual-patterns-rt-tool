@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useTextureStore } from '../../store';
 import { PlayIcon, StopIcon, PlusIcon, TrashIcon } from '../shared/icons';
 import CollapsibleSection from '../shared/CollapsibleSection';
@@ -9,6 +9,9 @@ import { SequencerCell } from '../shared/SequencerCell';
 import type { Sequence } from '../../types';
 
 const Sequencer: React.FC = () => {
+    const [showNewSequenceInput, setShowNewSequenceInput] = useState(false);
+    const [newSequenceName, setNewSequenceName] = useState('');
+    
     const {
         project,
         activeSequenceIndex,
@@ -28,6 +31,8 @@ const Sequencer: React.FC = () => {
         setActiveSequenceIndex,
         updateActiveSequence,
         setSequencerNumSteps,
+        saveNewSequence,
+        deleteSequence,
     } = useTextureStore.getState();
 
 
@@ -37,6 +42,26 @@ const Sequencer: React.FC = () => {
 
     const { patterns, sequencer } = activeSequence;
     const { steps, bpm, numSteps } = sequencer;
+    const canDelete = project.sequences.length > 1;
+
+    const handleSaveNewSequence = () => {
+        if (newSequenceName.trim()) {
+            saveNewSequence(newSequenceName.trim());
+            setNewSequenceName('');
+            setShowNewSequenceInput(false);
+        }
+    };
+
+    const handleDeleteSequence = () => {
+        if (activeSequence && canDelete) {
+            const confirmDelete = window.confirm(
+                `¿Eliminar la secuencia "${activeSequence.name}"? Esta acción no se puede deshacer.`
+            );
+            if (confirmDelete) {
+                deleteSequence(activeSequence.id);
+            }
+        }
+    };
 
     const handleStepClick = (patternId: string, stepIndex: number) => {
         const newSteps = [...steps];
@@ -90,19 +115,59 @@ const Sequencer: React.FC = () => {
                             size="icon"
                             icon={<PlusIcon className="w-5 h-5"/>}
                             iconOnly
-                            title="Añadir secuencia (próximamente)" 
-                            disabled
+                            title="Añadir nueva secuencia" 
+                            onClick={() => setShowNewSequenceInput(!showNewSequenceInput)}
                         />
                         <Button 
                             variant="danger"
                             size="icon"
                             icon={<TrashIcon className="w-5 h-5"/>}
                             iconOnly
-                            title="Eliminar secuencia (próximamente)" 
-                            disabled
+                            title={canDelete ? "Eliminar secuencia" : "No puedes eliminar la última secuencia"}
+                            onClick={handleDeleteSequence}
+                            disabled={!canDelete}
                         />
                     </div>
                 </div>
+
+                {/* New Sequence Input */}
+                {showNewSequenceInput && (
+                    <div className="space-y-2">
+                        <label htmlFor="new-sequence-name" className="font-medium text-gray-300 text-xs block">
+                            Nombre de la nueva secuencia
+                        </label>
+                        <div className="flex gap-2">
+                            <input
+                                id="new-sequence-name"
+                                type="text"
+                                value={newSequenceName}
+                                onChange={(e) => setNewSequenceName(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && handleSaveNewSequence()}
+                                placeholder="Ej: Secuencia 2"
+                                className="flex-1 bg-gray-700 text-white text-sm rounded-md px-3 py-1.5 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                autoFocus
+                            />
+                            <Button
+                                variant="primary"
+                                size="sm"
+                                onClick={handleSaveNewSequence}
+                                disabled={!newSequenceName.trim()}
+                            >
+                                Guardar
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                    setShowNewSequenceInput(false);
+                                    setNewSequenceName('');
+                                }}
+                            >
+                                Cancelar
+                            </Button>
+                        </div>
+                    </div>
+                )}
 
                 {/* Row 2: Transport controls - responsive grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-[auto_1fr] lg:grid-cols-[auto_1fr_auto] gap-3 items-start sm:items-center">
