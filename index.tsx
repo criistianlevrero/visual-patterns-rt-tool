@@ -2,6 +2,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
+import { env, logEnvConfig } from './config';
 import type { Project } from './types';
 
 const rootElement = document.getElementById('root');
@@ -16,17 +17,22 @@ const startApp = async () => {
   let initialProject: Project | null = null;
   const LOCAL_STORAGE_KEY = 'textureAppProject';
   
-  // Expose debug controls globally
-  (window as any).__DEBUG_SEQUENCER = false;
-  (window as any).enableDebug = () => {
-    (window as any).__DEBUG_SEQUENCER = true;
-    console.log('🐛 Debug mode enabled. Sequencer logs will appear in console.');
-  };
-  (window as any).disableDebug = () => {
+  // Log environment configuration
+  logEnvConfig();
+  
+  // Expose debug controls globally (only if debug mode is enabled)
+  if (env.debugMode) {
     (window as any).__DEBUG_SEQUENCER = false;
-    console.log('🐛 Debug mode disabled.');
-  };
-  console.log('💡 Debug helpers available: window.enableDebug() / window.disableDebug()');
+    (window as any).enableDebug = () => {
+      (window as any).__DEBUG_SEQUENCER = true;
+      console.log('🐛 Debug mode enabled. Sequencer logs will appear in console.');
+    };
+    (window as any).disableDebug = () => {
+      (window as any).__DEBUG_SEQUENCER = false;
+      console.log('🐛 Debug mode disabled.');
+    };
+    console.log('💡 Debug helpers available: window.enableDebug() / window.disableDebug()');
+  }
 
   // 0. Fetch the default project data from the JSON file.
   let defaultProjectData: Project | null = null;

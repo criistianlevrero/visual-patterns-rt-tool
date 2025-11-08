@@ -8,6 +8,7 @@ import MidiConsole from './components/midi/MidiConsole';
 import ViewportControls from './components/controls/ViewportControls';
 import Sequencer from './components/sequencer/Sequencer';
 import DebugOverlay from './components/debug/DebugOverlay';
+import { env } from './config';
 import type { Project } from './types';
 
 interface AppProps {
@@ -96,11 +97,11 @@ const App: React.FC<AppProps> = ({ initialProject }) => {
       {!isFullscreen ? (
         <div className="min-h-screen text-gray-200 font-sans flex flex-col antialiased">
           <header className="bg-gray-800/50 backdrop-blur-sm border-b border-gray-700">
-            <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="flex items-center justify-between h-16">
-                <div className="flex items-center space-x-3">
-                  <FishIcon className="h-8 w-8 text-cyan-400" />
-                  <h1 className="text-xl md:text-2xl font-bold text-gray-50">
+            <div className="container mx-auto px-3 sm:px-4 lg:px-6">
+              <div className="flex items-center justify-between h-12">
+                <div className="flex items-center space-x-2">
+                  <FishIcon className="h-6 w-6 text-cyan-400" />
+                  <h1 className="text-base md:text-lg font-bold text-gray-50">
                     Generador de Textura de Escamas
                   </h1>
                 </div>
@@ -115,15 +116,15 @@ const App: React.FC<AppProps> = ({ initialProject }) => {
             </div>
           </header>
 
-          <main className="flex-grow container mx-auto p-4 md:p-8">
-            <div className="grid gap-8 items-start grid-cols-1 lg:grid-cols-3">
-              <div className="lg:col-span-1 bg-gray-800 p-6 rounded-2xl shadow-2xl border border-gray-700">
+          <main className="flex-grow container mx-auto p-3 md:p-4">
+            <div className="grid gap-4 items-start grid-cols-1 lg:grid-cols-3">
+              <div className="lg:col-span-1 bg-gray-800 p-4 rounded-xl shadow-2xl border border-gray-700">
                 {controlPanel}
               </div>
               
-              <div className="lg:col-span-2 flex flex-col gap-8">
+              <div className="lg:col-span-2 flex flex-col gap-4">
                 <div className={`
-                    relative bg-gray-800/50 p-4 rounded-2xl shadow-2xl border border-gray-700
+                    relative bg-gray-800/50 p-3 rounded-xl shadow-2xl border border-gray-700
                     ${viewportMode === 'desktop' ? 'w-full aspect-video' : ''}
                     ${viewportMode === 'mobile' ? 'w-full max-w-sm mx-auto aspect-[9/16]' : 'w-full aspect-square'}
                 `}>
@@ -138,14 +139,14 @@ const App: React.FC<AppProps> = ({ initialProject }) => {
                       )}
                     </div>
                 </div>
-                <div className="bg-gray-800 p-6 rounded-2xl shadow-2xl border border-gray-700">
+                <div className="bg-gray-800 p-4 rounded-xl shadow-2xl border border-gray-700">
                   {sequencerPanel}
                 </div>
               </div>
             </div>
           </main>
 
-          <footer className="text-center py-4 text-gray-500 text-sm">
+          <footer className="text-center py-2 text-gray-500 text-xs">
             <p>Creado con React, Tailwind CSS y Gemini</p>
           </footer>
         </div>
@@ -183,7 +184,7 @@ const App: React.FC<AppProps> = ({ initialProject }) => {
             <div
               className={`fixed top-0 left-0 h-full bg-gray-800/90 backdrop-blur-sm border-r border-gray-700 shadow-2xl transition-transform duration-300 ease-in-out z-40 w-full max-w-md ${isDrawerOpen ? 'translate-x-0' : '-translate-x-full'}`}
             >
-              <div className="p-6 overflow-y-auto h-full text-gray-200">
+              <div className="p-4 overflow-y-auto h-full text-gray-200">
                 {controlPanel}
               </div>
             </div>
@@ -191,7 +192,7 @@ const App: React.FC<AppProps> = ({ initialProject }) => {
             <div
               className={`fixed bottom-0 left-0 right-0 bg-gray-800/90 backdrop-blur-sm border-t border-gray-700 shadow-2xl transition-transform duration-300 ease-in-out z-40 ${isSequencerDrawerOpen ? 'translate-y-0' : 'translate-y-full'}`}
             >
-              <div className="p-6 text-gray-200 container mx-auto">
+              <div className="p-4 text-gray-200 container mx-auto">
                 {sequencerPanel}
               </div>
             </div>
@@ -208,15 +209,15 @@ const App: React.FC<AppProps> = ({ initialProject }) => {
       {!isConsoleOpen && !isFullscreen && (
         <button
           onClick={() => setIsConsoleOpen(true)}
-          className="fixed bottom-6 right-6 z-50 w-14 h-14 bg-cyan-600 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-cyan-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-cyan-500"
+          className="fixed bottom-4 right-4 z-50 w-12 h-12 bg-cyan-600 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-cyan-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-cyan-500"
           aria-label="Abrir consola MIDI"
         >
-          <ConsoleIcon className="w-7 h-7" />
+          <ConsoleIcon className="w-6 h-6" />
         </button>
       )}
       
-      {/* Debug Overlay */}
-      <DebugOverlay />
+      {/* Debug Overlay - Only visible when VITE_DEBUG_MODE=true */}
+      {env.debugMode && <DebugOverlay />}
     </div>
   );
 };
