@@ -51,6 +51,8 @@ const DebugOverlay: React.FC = () => {
     animationFrameRef: state.animationFrameRef,
     transitionProgress: state.transitionProgress,
     isSequencerPlaying: state.project?.globalSettings.isSequencerPlaying,
+    animateOnlyChanges: state.project?.sequences[state.activeSequenceIndex]?.animateOnlyChanges,
+    interpolationSpeed: state.project?.sequences[state.activeSequenceIndex]?.interpolationSpeed,
   }));
 
   // Calculate settings hash for change detection
@@ -143,7 +145,7 @@ const DebugOverlay: React.FC = () => {
     prevSettingsHashRef.current = hash;
     prevSequencerStepRef.current = storeState.sequencerCurrentStep;
     prevAnimationActiveRef.current = animationActive;
-  }, [storeState.currentSettings, storeState.sequencerCurrentStep, storeState.selectedPatternId, storeState.animationFrameRef, storeState.transitionProgress]);
+  }, [storeState.currentSettings, storeState.sequencerCurrentStep, storeState.selectedPatternId, storeState.animationFrameRef, storeState.transitionProgress, storeState.isSequencerPlaying]);
 
   const addLog = (type: string, data: any) => {
     setLogs(prev => {
@@ -248,6 +250,16 @@ const DebugOverlay: React.FC = () => {
                 style={{ width: `${metrics.transitionProgress * 100}%` }}
               />
             </div>
+          </div>
+          <div className="bg-gray-700/50 p-2 rounded">
+            <div className="text-gray-400">Animate Only Changes</div>
+            <div className={`font-mono font-bold ${storeState.animateOnlyChanges ? 'text-green-400' : 'text-gray-400'}`}>
+              {storeState.animateOnlyChanges ? 'ON' : 'OFF'}
+            </div>
+          </div>
+          <div className="bg-gray-700/50 p-2 rounded">
+            <div className="text-gray-400">Interpolation Speed</div>
+            <div className="text-white font-mono font-bold">{storeState.interpolationSpeed || 0}ms</div>
           </div>
           <div className="bg-gray-700/50 p-2 rounded col-span-2">
             <div className="text-gray-400">Settings Hash</div>

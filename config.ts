@@ -18,6 +18,17 @@ interface EnvConfig {
   maxFps: number;
   /** Auto-connect MIDI on startup */
   midiAutoConnect: boolean;
+  /** Debug categories for fine-grained control */
+  debug: {
+    /** Sequencer timing and pattern loading */
+    sequencer: boolean;
+    /** Pattern animation and interpolation */
+    animation: boolean;
+    /** MIDI messages and mappings */
+    midi: boolean;
+    /** Property sequencer and keyframes */
+    propertySequencer: boolean;
+  };
 }
 
 /**
@@ -47,6 +58,12 @@ export const env: EnvConfig = {
   geminiApiKey: import.meta.env.VITE_GEMINI_API_KEY,
   maxFps: parseNumber(import.meta.env.VITE_MAX_FPS, 60),
   midiAutoConnect: parseBoolean(import.meta.env.VITE_MIDI_AUTO_CONNECT, true),
+  debug: {
+    sequencer: parseBoolean(import.meta.env.VITE_DEBUG_SEQUENCER, false),
+    animation: parseBoolean(import.meta.env.VITE_DEBUG_ANIMATION, false),
+    midi: parseBoolean(import.meta.env.VITE_DEBUG_MIDI, false),
+    propertySequencer: parseBoolean(import.meta.env.VITE_DEBUG_PROPERTY_SEQUENCER, false),
+  },
 };
 
 /**

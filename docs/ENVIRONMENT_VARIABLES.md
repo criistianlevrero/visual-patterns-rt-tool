@@ -42,7 +42,6 @@ All environment variables must be prefixed with `VITE_` to be exposed to the cli
 
 When enabled:
 - Shows the debug overlay (purple bug icon) in the bottom-right corner
-- Exposes `window.enableDebug()` and `window.disableDebug()` functions
 - Logs environment configuration on startup
 
 **Development:**
@@ -54,6 +53,74 @@ VITE_DEBUG_MODE=true
 ```env
 VITE_DEBUG_MODE=false
 ```
+
+### Debug Categories (Fine-grained Control)
+
+These variables allow you to enable debug logging for specific subsystems, reducing console noise:
+
+#### `VITE_DEBUG_SEQUENCER`
+
+- **Type:** Boolean (`true` | `false`)
+- **Default:** `false`
+- **Description:** Logs sequencer timing, pattern loading, and step changes
+
+Useful for debugging:
+- Sequencer timing drift
+- Pattern transitions
+- Step-by-step execution
+
+```env
+VITE_DEBUG_SEQUENCER=true
+```
+
+#### `VITE_DEBUG_ANIMATION`
+
+- **Type:** Boolean (`true` | `false`)
+- **Default:** `false`
+- **Description:** Logs pattern animation and interpolation details
+
+Useful for debugging:
+- `animateOnlyChanges` behavior
+- Property interpolation
+- Animation frame timing
+- Settings transitions
+
+```env
+VITE_DEBUG_ANIMATION=true
+```
+
+#### `VITE_DEBUG_MIDI`
+
+- **Type:** Boolean (`true` | `false`)
+- **Default:** `false`
+- **Description:** Logs MIDI messages and mappings
+
+Useful for debugging:
+- MIDI CC messages
+- Note on/off events
+- MIDI learn process
+- Controller mappings
+
+```env
+VITE_DEBUG_MIDI=true
+```
+
+#### `VITE_DEBUG_PROPERTY_SEQUENCER`
+
+- **Type:** Boolean (`true` | `false`)
+- **Default:** `false`
+- **Description:** Logs property sequencer keyframe interpolation and automation
+
+Useful for debugging:
+- Keyframe calculations
+- Property automation
+- Track-based sequencing
+
+```env
+VITE_DEBUG_PROPERTY_SEQUENCER=true
+```
+
+**💡 Tip:** Enable only the categories you need to keep logs focused and readable.
 
 ### `VITE_DEV_MODE`
 
