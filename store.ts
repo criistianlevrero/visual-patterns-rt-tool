@@ -206,7 +206,7 @@ export const useTextureStore = createWithEqualityFn<State & Actions>((set, get):
             id: `seq_${Date.now()}`,
             name,
             interpolationSpeed: 500,
-            animateOnlyChanges: false,
+            animateOnlyChanges: true,
             sequencer: {
                 steps: Array(16).fill(null),
                 bpm: 120,

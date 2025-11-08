@@ -20,7 +20,7 @@
       "id": "seq-default-1",
       "name": "Secuencia Principal",
       "interpolationSpeed": 0.6,
-      "animateOnlyChanges": false,
+      "animateOnlyChanges": true,
       "sequencer": {
         "numSteps": 16,
         "steps": [
