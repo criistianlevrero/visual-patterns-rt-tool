@@ -1,6 +1,5 @@
-
-
 {
+  "version": "2.0.0",
   "globalSettings": {
     "midiMappings": {
       "scaleSize": 35,
@@ -19,8 +18,7 @@
     {
       "id": "seq-default-1",
       "name": "Secuencia Principal",
-      "interpolationSpeed": 0.6,
-      "animateOnlyChanges": true,
+      "interpolationSpeed": 2,
       "sequencer": {
         "numSteps": 16,
         "steps": [
