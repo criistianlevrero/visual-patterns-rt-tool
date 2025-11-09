@@ -11,10 +11,12 @@ Real-time visual pattern generator for VJs and visual artists. React + Vite appl
 ## Architecture
 
 ### State Management (Zustand + Immer)
-- **Single source of truth**: `store.ts` (762 lines) manages all app state via Zustand with Immer for immutable updates
-- **Key state domains**: Project data, MIDI mappings, sequencer playback, pattern transitions, animation frames
+- **Single source of truth**: `store/` directory manages all app state via Zustand with Immer for immutable updates
+- **Slice architecture**: State divided into specialized slices (project, settings, sequencer, midi, ui, animation)
+- **Key state domains**: Project data, MIDI mappings, sequencer playback, pattern transitions, centralized animation system
 - **Persistence**: Auto-saves to `localStorage` on every project mutation via `setProject()` action
 - **State structure**: `Project → Sequences → Patterns → ControlSettings`
+- **Animation system**: Centralized `activeAnimations` Map tracks all property interpolations with priority-based control
 
 ### Renderer Plugin System
 Renderers are **completely independent modules** registered in `components/renderers/index.ts`:
@@ -45,9 +47,10 @@ The `ControlPanel` dynamically renders controls using `<RendererControls />` whi
 - **MIDI Learn**: Two-click mapping flow - click control icon → move MIDI controller → auto-mapped
 - **Pattern triggers**: Hold MIDI note for 0.5s to create pattern, tap to load pattern
 - **Mappings stored per-project**: `project.globalSettings.midiMappings` maps `ControlSettings` keys to MIDI CC numbers
-- **MIDI handling**: All logic in `store.ts` (`connectMidi`, `_handleMidiMessage`, `startMidiLearning`)
-- **Real-time CC mapping**: MIDI CC messages directly update `currentSettings` values scaled to control ranges
+- **MIDI handling**: All logic in `store/slices/midi.slice.ts` (`connectMidi`, `_handleMidiMessage`, `startMidiLearning`)
+- **Real-time CC mapping**: MIDI CC messages use `requestPropertyChange()` with highest priority (can cancel all other animations)
 - **Note tracking**: `noteOnTime` object tracks note-on timestamps for hold detection
+- **Priority**: MIDI has highest priority (ControlSource.MIDI = 3) - overrides UI, sequencer, and property automation
 
 ### Interaction Flows
 
@@ -59,23 +62,33 @@ The `ControlPanel` dynamically renders controls using `<RendererControls />` whi
 
 #### Control Updates Priority
 ```
-User interaction → Cancels RAF → Sets currentSettings → Marks dirty
-    ↓ (lower priority)
-Pattern load → Animated RAF → Interpolates settings → Clears dirty
-    ↓ (lower priority)
-Sequencer tick → Pattern + automation → Merged settings → Updates currentSettings
-    ↓ (lowest priority)
-MIDI CC → Direct value update → Sets currentSettings → Marks dirty (if pattern selected)
+Priority Levels (ControlSource enum):
+  MIDI (3)                → Highest priority, immediate changes (steps=0)
+    ↓ (can cancel)
+  UI (2)                  → User interactions, immediate or animated
+    ↓ (can cancel)
+  PropertySequencer (1)   → Keyframe automation, overlays patterns
+    ↓ (can cancel)
+  PatternSequencer (0)    → Lowest priority, pattern transitions
+
+Flow: requestPropertyChange(property, from, to, steps, source, interpolationType)
+  → Checks active animation priority
+  → Cancels if new source >= existing source priority
+  → Calculates frames from steps based on BPM
+  → Adds to activeAnimations Map
+  → RAF loop interpolates all active animations
 ```
 
 ### Pattern System
 - **Patterns are snapshots**: Each pattern stores complete `ControlSettings` state
-- **Animated transitions**: `loadPattern()` uses `requestAnimationFrame` loop with linear interpolation
-  - Duration controlled by `sequence.interpolationSpeed`
+- **Animated transitions**: Pattern loading uses centralized `requestPropertyChange()` system
+  - Duration controlled by `sequence.interpolationSpeed` (in steps: 0-8, supports fractions)
+  - Steps converted to frames based on BPM: `totalFrames = steps * framesPerStep`
   - Gradient transitions use shader-based crossfade (`transitionProgress` uniform)
-  - **Critical**: Cancels previous animation frames to avoid stuck transitions
-- **animateOnlyChanges mode**: Only interpolates properties that differ from last applied pattern
+  - **Critical**: New animations cancel previous ones based on priority
+- **Animate only changes**: Both sequencer and UI compare old vs new settings, only animate differences
 - **Dirty state tracking**: User edits mark pattern as dirty, prompting save/overwrite
+- **Priority system**: UI pattern loads (ControlSource.UI) have higher priority than sequencer loads (ControlSource.PatternSequencer)
 
 ### Real-Time Rendering Pipeline
 ```
@@ -113,24 +126,25 @@ The app has **two independent sequencers** that run simultaneously:
 - **Combined with patterns**: Property automation overlays on top of pattern settings
 - **Track lanes**: Each property gets its own lane with visual keyframe indicators
 
-#### Sequencer Timing & Execution (`store.ts` → `_tickSequencer`)
+#### Sequencer Timing & Execution (`store/slices/sequencer.slice.ts` → `_tickSequencer`)
 ```typescript
 // 1. Advance step counter (wraps at numSteps)
-// 2. Load pattern if assigned to current step (triggers animated transition)
-// 3. Calculate property automation by interpolating between keyframes
-// 4. CRITICAL: Skip settings update if animationFrameRef !== null (prevents race conditions)
-// 5. Calculate next tick using precise timestamp-based scheduling (compensates drift)
-// 6. Schedule next tick: delay = idealNextTime - Date.now()
+// 2. Compare previous pattern with new pattern (if pattern changes)
+// 3. Request animations ONLY for properties that differ (via requestPropertyChange with PatternSequencer priority)
+// 4. Calculate property automation by interpolating between keyframes
+// 5. Apply automation via requestPropertyChange with PropertySequencer priority
+// 6. Calculate next tick using precise timestamp-based scheduling (compensates drift)
+// 7. Schedule next tick: delay = idealNextTime - Date.now()
 ```
 
 **Key implementation details**:
-- BPM range: 30-240, controls `setTimeout` interval
+- BPM range: 30-240, controls tick interval
 - Step counter loops at `numSteps` boundary
 - Property automation uses **wrap-around interpolation** (keyframe at step 15 → keyframe at step 1)
 - Automation values clamped to slider min/max from control schema
-- **Critical**: Pattern transitions cancel on user interaction to maintain manual control
+- **Pattern comparison**: Uses JSON.stringify for deep array comparison (gradients)
 - **Timing precision**: Tracks `sequencerStartTime` and calculates ideal tick times to prevent drift
-- **Race condition prevention**: Skips settings updates during pattern animations (when RAF is active)
+- **Priority system**: Pattern loads use ControlSource.PatternSequencer (lowest), automation uses PropertySequencer (higher)
 
 ## UI Architecture & Layout
 
@@ -197,8 +211,8 @@ export const yourSchema: ControlSection[] = [
 
 ### Adding New Control Settings
 1. Add property to `ControlSettings` interface in `types.ts`
-2. Add default value in `store.ts` initial `currentSettings`
-3. Use via `setCurrentSetting(key, value)` - auto-marks patterns as dirty
+2. Add default value in `store/index.ts` initial `currentSettings`
+3. Use via `setCurrentSetting(key, value)` - calls `requestPropertyChange()` with UI priority
 4. For MIDI, users map via MIDI Learn (no code changes needed)
 
 ## Key Conventions
@@ -236,8 +250,10 @@ fix: resolve sequencer glitch caused by race condition
 
 ### Animation Frame Management
 - **Texture rotation**: Continuous `requestAnimationFrame` loop in `initializeProject()`
-- **Pattern transitions**: Temporary RAF loop, **always cancel previous frame** before starting new animation
+- **Property animations**: Centralized RAF loop in `animation.slice.ts` (_animationLoop)
+- **Priority-based cancellation**: Higher priority sources can cancel lower priority animations
 - **WebGL renderers**: Use `useEffect` cleanup to cancel RAF on unmount
+- **Frame calculation**: Steps converted to frames based on BPM (framesPerStep = round(secondsPerStep * 60fps))
 
 ### Gradient Handling
 - Gradients are `GradientColor[]` arrays with `{ id, color, hardStop }`
@@ -253,13 +269,14 @@ fix: resolve sequencer glitch caused by race condition
 ## Critical Gotchas
 
 1. **Don't mutate store state directly**: Always use actions or `produce()`
-2. **Cancel animation frames**: Before starting pattern transitions, cancel `animationFrameRef`
+2. **Use requestPropertyChange**: All property updates should go through the centralized animation system
 3. **localStorage limits**: Project export/import to JSON files for safety
 4. **MIDI note timing**: Pattern creation requires `noteOnTime` tracking (0.5s threshold)
 5. **Renderer switching**: User can change `globalSettings.renderer` - components must handle missing settings gracefully
 6. **Fullscreen mode**: Has separate UI state (`isOverlayVisible`, auto-hide on mouse idle)
 7. **Sequencer timing**: Uses precise timestamp-based scheduling to avoid drift (tracks `sequencerStartTime`)
-8. **Animation conflicts**: `_tickSequencer` skips settings updates when `animationFrameRef !== null` to prevent race conditions
+8. **Animation priority**: Respect ControlSource enum - MIDI(3) > UI(2) > PropertySequencer(1) > PatternSequencer(0)
+9. **Steps to frames**: Frame calculation depends on BPM - fractional steps (0.25) supported for fine control
 
 ## External Dependencies
 - **zustand** (5.0.8): State management
@@ -274,7 +291,7 @@ Real-time telemetry and event logging for troubleshooting:
 - **FPS counter**: Monitors RAF loop performance
 - **Sequencer metrics**: Ticks count, current step, timing
 - **Settings tracking**: Hash-based change detection
-- **Animation state**: Shows transition progress and active RAF
+- **Animation state**: Shows active animations count (activeAnimations.size)
 - **Event log**: Chronological record of sequencer ticks, pattern loads, animations
 - **Export functionality**: Download debug data as JSON for analysis
 
@@ -301,9 +318,10 @@ When enabled, logs include:
 
 ### Common Issues to Check
 - **Glitches during playback**: Compare sequencer tick timing vs RAF calls (should be ~60 FPS)
-- **Stuck transitions**: Check if `animationFrameActive` stays true (should cycle false/true)
+- **Stuck transitions**: Check if active animations count stays non-zero
 - **Settings not updating**: Compare `settingsHash` changes vs `settingsUpdates` counter
 - **Property automation**: Verify interpolated values in console logs match expected ranges
+- **Priority conflicts**: Check debug logs for animation cancellation events
 
 ### MidiConsole
 - Use `MidiConsole` component to view MIDI messages in real-time
