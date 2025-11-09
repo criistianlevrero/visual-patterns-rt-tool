@@ -41,9 +41,33 @@ export interface Pattern {
     midiNote?: number;
 }
 
-// --- New types for Property Sequencer ---
-export type InterpolationType = 'linear' | 'none';
+// --- Animation System Types ---
+export enum ControlSource {
+  PatternSequencer = 0,  // Lowest priority
+  PropertySequencer = 1,
+  UI = 2,
+  MIDI = 3               // Highest priority
+}
 
+export type InterpolationType = 'linear'; // Prepared for future expansion
+
+export interface AnimationRequest {
+  property: keyof ControlSettings;
+  from: any;
+  to: any;
+  steps: number;              // 0 = immediate, >0 = animated
+  source: ControlSource;
+  interpolationType: InterpolationType;
+}
+
+export interface ActiveAnimation {
+  request: AnimationRequest;
+  currentFrame: number;
+  totalFrames: number;
+  startValue: any;
+}
+
+// --- New types for Property Sequencer ---
 export interface Keyframe {
   step: number;
   value: number;
@@ -91,8 +115,7 @@ export interface SequencerSettings {
 export interface Sequence {
     id:string;
     name: string;
-    interpolationSpeed: number;
-    animateOnlyChanges: boolean;
+    interpolationSpeed: number; // In steps (0-8), supports fractions. 0 = immediate. Will be converted to frames based on BPM
     sequencer: SequencerSettings;
     patterns: Pattern[];
 }
@@ -104,6 +127,7 @@ export interface GlobalSettings {
 }
 
 export interface Project {
+    version: string; // Semantic versioning (e.g., "1.0.0")
     globalSettings: GlobalSettings;
     sequences: Sequence[];
 }
