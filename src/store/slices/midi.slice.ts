@@ -2,6 +2,7 @@ import { produce } from 'immer';
 import type { StateCreator } from 'zustand';
 import type { StoreState, MidiActions } from '../types';
 import type { ControlSettings } from '../../types';
+import { ControlSource } from '../../types';
 import { controlConfigs } from '../utils/helpers';
 
 export const createMidiSlice: StateCreator<StoreState, [], [], MidiActions> = (set, get) => ({
@@ -114,7 +115,17 @@ export const createMidiSlice: StateCreator<StoreState, [], [], MidiActions> = (s
                     const config = controlConfigs[controlId as keyof typeof controlConfigs];
                     if(config) {
                         const scaledValue = config.min + (value / 127) * (config.max - config.min);
-                        get().setCurrentSetting(controlId as keyof ControlSettings, scaledValue);
+                        const currentValue = get().currentSettings[controlId as keyof ControlSettings];
+                        
+                        // Use animation system with MIDI priority
+                        get().requestPropertyChange(
+                            controlId as keyof ControlSettings,
+                            currentValue,
+                            scaledValue,
+                            0, // Immediate change
+                            ControlSource.MIDI,
+                            'linear'
+                        );
                     }
                 }
             }
