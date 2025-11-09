@@ -2,6 +2,7 @@ import { produce } from 'immer';
 import type { StateCreator } from 'zustand';
 import type { StoreState, SequencerActions } from '../types';
 import type { ControlSettings, PropertyTrack, Keyframe, SliderControlConfig } from '../../types';
+import { ControlSource } from '../../types';
 import { lerp } from '../utils/helpers';
 import { renderers } from '../../components/renderers';
 import { env } from '../../config';
@@ -34,7 +35,7 @@ export const createSequencerSlice: StateCreator<StoreState, [], [], SequencerAct
     },
     
     _tickSequencer: () => {
-        const { project, activeSequenceIndex, selectedPatternId } = get();
+        const { project, activeSequenceIndex, selectedPatternId, requestPropertyChange, currentSettings } = get();
         if (!project || !project.globalSettings.isSequencerPlaying) return;
         
         const activeSequence = project.sequences[activeSequenceIndex];
@@ -57,16 +58,64 @@ export const createSequencerSlice: StateCreator<StoreState, [], [], SequencerAct
             });
         }
         
-        // --- 1. Load base pattern if it changes ---
+        // --- 1. Load base pattern if it changes (animate only differences) ---
         if (patternIdToLoad && patternIdToLoad !== selectedPatternId) {
-            get().loadPattern(patternIdToLoad);
+            const newPattern = activeSequence.patterns.find(p => p.id === patternIdToLoad);
+            const previousPattern = activeSequence.patterns.find(p => p.id === selectedPatternId);
+            
+            if (newPattern) {
+                const interpolationSteps = activeSequence.interpolationSpeed;
+                
+                // Compare with previous pattern settings (or current settings if no previous pattern)
+                const baseSettings = previousPattern?.settings || currentSettings;
+                
+                // Calculate properties that differ
+                const changedKeys = (Object.keys(newPattern.settings) as Array<keyof ControlSettings>).filter(key => {
+                    const newValue = newPattern.settings[key];
+                    const oldValue = baseSettings[key];
+                    
+                    // Deep comparison for arrays (gradients)
+                    if (Array.isArray(newValue) && Array.isArray(oldValue)) {
+                        return JSON.stringify(newValue) !== JSON.stringify(oldValue);
+                    }
+                    return newValue !== oldValue;
+                });
+                
+                if (env.debug.sequencer) {
+                    console.log('[SEQUENCER] Pattern change - animating only differences', {
+                        timestamp: Date.now(),
+                        fromPattern: selectedPatternId,
+                        toPattern: patternIdToLoad,
+                        totalProps: Object.keys(newPattern.settings).length,
+                        changedProps: changedKeys.length,
+                        changedKeys,
+                        interpolationSteps,
+                    });
+                }
+                
+                // Request property changes only for properties that differ
+                changedKeys.forEach(key => {
+                    const from = baseSettings[key];
+                    const to = newPattern.settings[key];
+                    requestPropertyChange(
+                        key,
+                        from,
+                        to,
+                        interpolationSteps,
+                        ControlSource.PatternSequencer,
+                        'linear'
+                    );
+                });
+                
+                // Update selection state
+                set({
+                    selectedPatternId: patternIdToLoad,
+                    isPatternDirty: false
+                });
+            }
         }
 
-        // --- 2. Calculate and apply property automation ---
-        const basePattern = activeSequence.patterns.find(p => p.id === (patternIdToLoad || selectedPatternId));
-        
-        let automatedSettings = { ...get().currentSettings, ...(basePattern?.settings || {}) };
-
+        // --- 2. Apply property automation using requestPropertyChange ---
         const { propertyTracks } = sequencer;
         if (propertyTracks && propertyTracks.length > 0) {
             const rendererId = project.globalSettings.renderer;
@@ -110,46 +159,60 @@ export const createSequencerSlice: StateCreator<StoreState, [], [], SequencerAct
                 }
 
                 if (sliderConfigs && sliderConfigs[track.property]) {
-                     (automatedSettings as any)[track.property] = interpolatedValue;
+                    // Request immediate property change via animation system
+                    requestPropertyChange(
+                        track.property,
+                        currentSettings[track.property],
+                        interpolatedValue,
+                        0, // Immediate change
+                        ControlSource.PropertySequencer,
+                        'linear'
+                    );
                 }
             });
-        }
-        
-        // DEBUG: Log property automation results
-        if (env.debug.propertySequencer && propertyTracks && propertyTracks.length > 0) {
-            const automatedProps = propertyTracks.map(track => ({
-                property: track.property,
-                value: (automatedSettings as any)[track.property],
-            }));
-            console.log('[PROPERTY_SEQ] Automation applied', {
-                timestamp: Date.now(),
-                step: nextStep,
-                tracksCount: propertyTracks.length,
-                automatedProps,
-            });
-        }
-        
-        // CRITICAL FIX: Don't overwrite settings if a pattern animation is in progress
-        const { animationFrameRef } = get();
-        if (animationFrameRef !== null) {
-            if (env.debug.sequencer) {
-                console.log('[SEQUENCER] Settings update skipped', {
-                    timestamp: Date.now(),
-                    step: nextStep,
-                    reason: 'Pattern animation in progress',
-                });
-            }
-        } else {
-            set({ 
-                currentSettings: automatedSettings,
-                lastAppliedSettingsRef: automatedSettings,
-            });
             
-            if (env.debug.sequencer) {
-                console.log('[SEQUENCER] Settings updated', {
+            // DEBUG: Log property automation results
+            if (env.debug.propertySequencer) {
+                const automatedProps = propertyTracks.map(track => {
+                    const sortedKeyframes = [...track.keyframes].sort((a, b) => a.step - b.step);
+                    if (sortedKeyframes.length === 0) return null;
+                    
+                    let prevKeyframe = sortedKeyframes.find(k => k.step <= nextStep) || sortedKeyframes[sortedKeyframes.length - 1];
+                    let nextKeyframe = sortedKeyframes.find(k => k.step > nextStep) || sortedKeyframes[0];
+                    
+                    if (sortedKeyframes.every(k => k.step > nextStep)) {
+                        prevKeyframe = sortedKeyframes[sortedKeyframes.length - 1];
+                    }
+                    if (sortedKeyframes.every(k => k.step <= nextStep)) {
+                        nextKeyframe = sortedKeyframes[0];
+                    }
+                    
+                    let interpolatedValue: number;
+                    if (prevKeyframe.step === nextKeyframe.step) {
+                        interpolatedValue = prevKeyframe.value;
+                    } else {
+                        let stepDiff = nextKeyframe.step - prevKeyframe.step;
+                        let progress = nextStep - prevKeyframe.step;
+                        
+                        if (stepDiff < 0) {
+                            stepDiff += numSteps;
+                            if (progress < 0) progress += numSteps;
+                        }
+                        const t = progress / stepDiff;
+                        interpolatedValue = lerp(prevKeyframe.value, nextKeyframe.value, t);
+                    }
+                    
+                    return {
+                        property: track.property,
+                        value: interpolatedValue,
+                    };
+                }).filter(Boolean);
+                
+                console.log('[PROPERTY_SEQ] Automation applied', {
                     timestamp: Date.now(),
                     step: nextStep,
-                    settingsHash: JSON.stringify(automatedSettings).substring(0, 50) + '...',
+                    tracksCount: propertyTracks.length,
+                    automatedProps,
                 });
             }
         }
