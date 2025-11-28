@@ -34,10 +34,10 @@ const startApp = async () => {
     console.log('💡 Debug helpers available: window.enableDebug() / window.disableDebug()');
   }
 
-  // 0. Fetch the default project data from the JSON file.
+  // 0. Fetch the default project data from the JSON file (served from /public).
   let defaultProjectData: Project | null = null;
   try {
-    const response = await fetch('./default-project.json');
+    const response = await fetch('/default-project.json');
     if (!response.ok) {
       throw new Error(`Failed to fetch default-project.json: ${response.statusText}`);
     }

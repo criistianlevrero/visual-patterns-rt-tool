@@ -1,0 +1,14 @@
+{
+  "projectName": "Visual Patterns RT Tool Default",
+  "description": "Proyecto de ejemplo para Visual Patterns RT Tool.",
+  "globalSettings": {
+    "renderer": "webgl",
+    "bpm": 120,
+    "numSteps": 16,
+    "interpolationSpeed": 2,
+    "midiMappings": {}
+  },
+  "sequences": [],
+  "patterns": [],
+  "recordings": []
+}
