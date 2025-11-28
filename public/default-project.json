@@ -6,27 +6,45 @@
     "bpm": 120,
     "numSteps": 16,
     "interpolationSpeed": 2,
-    "midiMappings": {}
+    "midiMappings": {},
+    "isSequencerPlaying": true
   },
   "sequences": [
     {
       "id": "sequence-1",
       "name": "Secuencia Principal",
-      "interpolationSpeed": 2,
+      "interpolationSpeed": 3.75,
       "sequencer": {
-        "steps": [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-        "bpm": 120,
+        "steps": [
+          "e02f0781-a3d6-4506-a50f-c3d53ed25013",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          "0331044d-6a19-4c41-a507-58e3fbb162ea",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "bpm": 82,
         "numSteps": 16
       },
       "patterns": [
         {
-          "id": "pattern-1",
-          "name": "Patrón Inicial",
+          "id": "e02f0781-a3d6-4506-a50f-c3d53ed25013",
+          "name": "Memoria 2",
           "settings": {
-            "scaleSize": 150,
-            "scaleSpacing": 0,
-            "verticalOverlap": 0,
-            "horizontalOffset": 0.5,
+            "scaleSize": 45,
+            "scaleSpacing": 1.88,
+            "verticalOverlap": -0.2,
+            "horizontalOffset": 0.14,
             "shapeMorph": 0,
             "animationSpeed": 1,
             "animationDirection": 90,
@@ -35,18 +53,89 @@
             "scaleBorderColor": "#000000",
             "scaleBorderWidth": 0,
             "gradientColors": [
-              { "id": "g-color-1", "color": "#00ffff", "hardStop": false },
-              { "id": "g-color-2", "color": "#ff00ff", "hardStop": false }
+              {
+                "id": "g-color-1",
+                "color": "#00ffff",
+                "hardStop": false
+              },
+              {
+                "id": "g-color-2",
+                "color": "#ff00ff",
+                "hardStop": false
+              }
             ],
             "backgroundGradientColors": [
-              { "id": "bg-color-1", "color": "#1f2937", "hardStop": false }
+              {
+                "id": "bg-color-1",
+                "color": "#1f2937",
+                "hardStop": false
+              }
             ],
             "concentric_repetitionSpeed": 0.5,
             "concentric_growthSpeed": 0.5,
             "concentric_initialSize": 10,
             "concentric_gradientColors": [
-              { "id": "c-color-1", "color": "#00ffff", "hardStop": false },
-              { "id": "c-color-2", "color": "#ff00ff", "hardStop": false }
+              {
+                "id": "c-color-1",
+                "color": "#00ffff",
+                "hardStop": false
+              },
+              {
+                "id": "c-color-2",
+                "color": "#ff00ff",
+                "hardStop": false
+              }
+            ]
+          }
+        },
+        {
+          "id": "0331044d-6a19-4c41-a507-58e3fbb162ea",
+          "name": "Memoria 2",
+          "settings": {
+            "scaleSize": 195,
+            "scaleSpacing": 1.88,
+            "verticalOverlap": 1.35,
+            "horizontalOffset": 0.45,
+            "shapeMorph": 0,
+            "animationSpeed": 1,
+            "animationDirection": 90,
+            "textureRotation": 0,
+            "textureRotationSpeed": 0,
+            "scaleBorderColor": "#000000",
+            "scaleBorderWidth": 0,
+            "gradientColors": [
+              {
+                "id": "g-color-1",
+                "color": "#00ffff",
+                "hardStop": false
+              },
+              {
+                "id": "g-color-2",
+                "color": "#ff00ff",
+                "hardStop": false
+              }
+            ],
+            "backgroundGradientColors": [
+              {
+                "id": "bg-color-1",
+                "color": "#1f2937",
+                "hardStop": false
+              }
+            ],
+            "concentric_repetitionSpeed": 0.5,
+            "concentric_growthSpeed": 0.5,
+            "concentric_initialSize": 10,
+            "concentric_gradientColors": [
+              {
+                "id": "c-color-1",
+                "color": "#00ffff",
+                "hardStop": false
+              },
+              {
+                "id": "c-color-2",
+                "color": "#ff00ff",
+                "hardStop": false
+              }
             ]
           }
         }
@@ -54,5 +143,6 @@
     }
   ],
   "patterns": [],
-  "recordings": []
+  "recordings": [],
+  "version": "2.0.0"
 }
