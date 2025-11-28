@@ -41,6 +41,8 @@ const initialState: State = {
     sequencerCurrentStep: 0,
     sequencerTimeoutId: null,
     sequencerStartTime: null,
+    sequencerLoopCount: 0,
+    propertySequencerRafId: null,
     lastAppliedSettingsRef: null,
     midi: {
         devices: [],
