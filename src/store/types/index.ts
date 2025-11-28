@@ -19,6 +19,8 @@ export interface State {
     sequencerCurrentStep: number;
     sequencerTimeoutId: number | null;
     sequencerStartTime: number | null;
+    sequencerLoopCount: number;
+    propertySequencerRafId: number | null;
     lastAppliedSettingsRef: ControlSettings | null;
     midi: MidiState;
     midiLog: MidiLogEntry[];
@@ -62,6 +64,7 @@ export interface SequencerActions {
     setSequencerSteps: (steps: (string | null)[]) => void;
     setSequencerNumSteps: (numSteps: number) => void;
     _tickSequencer: () => void;
+    _updatePropertySequencer: () => void;
     addPropertyTrack: (property: keyof ControlSettings) => void;
     removePropertyTrack: (trackId: string) => void;
     addKeyframe: (trackId: string, step: number) => void;
