@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useTextureStore } from './store';
 import ControlPanel from './components/controls/ControlPanel';
 import { renderers } from './components/renderers';
-import { FishIcon, ConsoleIcon, EnterFullscreenIcon, ExitFullscreenIcon, SettingsIcon, CloseIcon, SequencerIcon } from './components/shared/icons';
+import { FishIcon, ConsoleIcon, EnterFullscreenIcon, ExitFullscreenIcon, SettingsIcon, CloseIcon, SequencerIcon, ResetIcon } from './components/shared/icons';
 import MidiConsole from './components/midi/MidiConsole';
 import ViewportControls from './components/controls/ViewportControls';
 import Sequencer from './components/sequencer/Sequencer';
@@ -37,6 +37,7 @@ const App: React.FC<AppProps> = ({ initialProject }) => {
   const midiLog = useTextureStore(state => state.midiLog);
   const clearMidiLog = useTextureStore(state => state.clearMidiLog);
   const rendererId = useTextureStore(state => state.project?.globalSettings.renderer ?? 'webgl');
+  const resetToDefault = useTextureStore(state => state.resetToDefault);
 
 
   const handleFullscreenChange = useCallback(() => {
@@ -50,6 +51,15 @@ const App: React.FC<AppProps> = ({ initialProject }) => {
       document.exitFullscreen();
     }
   }, []);
+
+  const handleResetToDefault = useCallback(() => {
+    const confirmReset = window.confirm(
+      '¿Estás seguro de que quieres resetear a la configuración por defecto? Se perderán todos los cambios actuales.'
+    );
+    if (confirmReset) {
+      resetToDefault();
+    }
+  }, [resetToDefault]);
 
   useEffect(() => {
     document.addEventListener('fullscreenchange', handleFullscreenChange);
@@ -107,13 +117,22 @@ const App: React.FC<AppProps> = ({ initialProject }) => {
                     </h1>
                   </div>
                 </div>
-                <button
-                  onClick={toggleFullscreen}
-                  className="p-2 text-gray-400 rounded-full hover:bg-gray-700 hover:text-white transition-colors"
-                  aria-label="Entrar en pantalla completa"
-                >
-                  <EnterFullscreenIcon className="w-6 h-6" />
-                </button>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={handleResetToDefault}
+                    className="p-2 text-gray-400 rounded-full hover:bg-gray-700 hover:text-white transition-colors"
+                    title="Resetear a configuración por defecto"
+                  >
+                    <ResetIcon className="w-5 h-5" />
+                  </button>
+                  <button
+                    onClick={toggleFullscreen}
+                    className="p-2 text-gray-400 rounded-full hover:bg-gray-700 hover:text-white transition-colors"
+                    aria-label="Entrar en pantalla completa"
+                  >
+                    <EnterFullscreenIcon className="w-6 h-6" />
+                  </button>
+                </div>
               </div>
             </div>
           </header>
@@ -174,13 +193,22 @@ const App: React.FC<AppProps> = ({ initialProject }) => {
                     {isSequencerDrawerOpen ? <CloseIcon className="w-6 h-6"/> : <SequencerIcon className="w-6 h-6" />}
                   </button>
               </div>
-              <button
-                onClick={toggleFullscreen}
-                className="p-3 bg-gray-800/70 text-white rounded-full backdrop-blur-sm hover:bg-gray-700/90 transition-colors"
-                aria-label="Salir de pantalla completa"
-              >
-                <ExitFullscreenIcon className="w-6 h-6" />
-              </button>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={handleResetToDefault}
+                  className="p-3 bg-gray-800/70 text-white rounded-full backdrop-blur-sm hover:bg-gray-700/90 transition-colors"
+                  title="Resetear a configuración por defecto"
+                >
+                  <ResetIcon className="w-6 h-6" />
+                </button>
+                <button
+                  onClick={toggleFullscreen}
+                  className="p-3 bg-gray-800/70 text-white rounded-full backdrop-blur-sm hover:bg-gray-700/90 transition-colors"
+                  aria-label="Salir de pantalla completa"
+                >
+                  <ExitFullscreenIcon className="w-6 h-6" />
+                </button>
+              </div>
             </div>
              
             <div

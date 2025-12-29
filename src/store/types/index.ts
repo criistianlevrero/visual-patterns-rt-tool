@@ -46,6 +46,7 @@ export interface ProjectActions {
     duplicateSequence: (sequenceId: string, newName: string) => void;
     exportProject: () => void;
     importProject: (file: File) => void;
+    resetToDefault: () => Promise<void>;
 }
 
 export interface SettingsActions {

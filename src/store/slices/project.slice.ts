@@ -200,4 +200,38 @@ export const createProjectSlice: StateCreator<StoreState, [], [], ProjectActions
       };
       reader.readAsText(file);
     },
+
+    resetToDefault: async () => {
+        try {
+            const response = await fetch('/default-project.json');
+            if (!response.ok) {
+                throw new Error(`Failed to fetch default project: ${response.statusText}`);
+            }
+            const defaultProject: Project = await response.json();
+            
+            // Clear localStorage
+            localStorage.removeItem(LOCAL_STORAGE_KEY);
+            
+            // Reset to default state
+            defaultProject.globalSettings.isSequencerPlaying = false;
+            const defaultSettings = defaultProject.sequences[0]?.patterns[0]?.settings || get().currentSettings;
+            
+            set({
+                project: defaultProject,
+                activeSequenceIndex: 0,
+                currentSettings: {
+                    ...get().currentSettings,
+                    ...defaultSettings,
+                },
+                selectedPatternId: null,
+                sequencerCurrentStep: 0,
+            });
+            
+            console.log('Project reset to default configuration.');
+            alert('Proyecto reseteado a configuración por defecto.');
+        } catch (error) {
+            console.error('Failed to reset to default:', error);
+            alert(`Error al resetear: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+    },
 });

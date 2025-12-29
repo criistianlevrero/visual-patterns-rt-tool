@@ -217,6 +217,12 @@ export const yourSchema: ControlSection[] = [
 
 ## Key Conventions
 
+### Project Version & Migration
+- **Current version**: v2.0.0 (tracked in `project.version`)
+- **Migration system**: Automatic migration in `initializeProject()` for older project files
+- **v1.0.0 → v2.0.0**: Converts `interpolationSpeed` from milliseconds to steps (divide by 250, clamp 0-8)
+- **Backward compatibility**: Always handle missing version field as v1.0.0
+
 ### Commit Messages (Conventional Commits)
 Use semantic prefixes for automated changelog generation:
 - **feat:** New features (e.g., `feat: add property sequencer`)
@@ -242,6 +248,8 @@ fix: resolve sequencer glitch caused by race condition
 - **Shared components**: `components/shared/` for cross-renderer UI (icons, CollapsibleSection)
 - **Renderer-specific**: Keep renderer logic isolated in their folders
 - **No JSX in .ts files**: Use `React.createElement()` for components in `.ts` schemas (see `scale-texture-schema.ts`)
+- **Store slices**: Specialized state slices in `store/slices/` (project, settings, sequencer, midi, ui, animation)
+- **Empty implementations**: `recording.slice.ts` and `RecordingPanel.tsx` are placeholders for future recording system
 
 ### TypeScript Patterns
 - **Discriminated unions**: `ControlConfig` uses `type` field to distinguish slider vs custom controls
@@ -279,10 +287,13 @@ fix: resolve sequencer glitch caused by race condition
 9. **Steps to frames**: Frame calculation depends on BPM - fractional steps (0.25) supported for fine control
 
 ## External Dependencies
-- **zustand** (5.0.8): State management
-- **immer** (10.2.0): Immutable updates
-- **Web MIDI API**: Browser-native, no library
-- **Vite** (6.2.0): Build tool with React plugin
+- **zustand** (5.0.8): State management with shallow equality checks
+- **immer** (10.2.0): Immutable state updates via `produce()` helper
+- **react** (19.2.0): UI framework with latest concurrent features
+- **use-sync-external-store** (1.6.0): For Zustand React 19 compatibility
+- **Web MIDI API**: Browser-native MIDI support, no external library
+- **Vite** (6.2.0): Build tool with React plugin and SVGR support
+- **vite-plugin-svgr** (4.5.0): SVG as React components
 
 ## Testing & Debugging
 
@@ -332,4 +343,15 @@ When enabled, logs include:
 ## Project Files
 - `default-project.json`: Default configuration loaded on first run
 - `metadata.json`: Project metadata (version, description)
+- `docs/next-steps/sistema-de-grabacion.md`: Detailed architecture spec for planned recording system
 - No tests currently - manual testing workflows for MIDI + rendering
+
+## Recording System (Planned)
+The recording system is currently in planning phase with detailed architecture documented in `docs/next-steps/sistema-de-grabacion.md`. Key planned features:
+- **Performance recording**: Capture all state changes (MIDI, UI, sequencer) with precise timestamps
+- **Playback system**: Temporal event replay with seek functionality
+- **Video rendering**: Canvas capture + MediaRecorder API for video export (720p-4K)
+- **Alternative encoding**: FFMPEG.wasm integration for advanced video processing
+- **File format**: JSON-based recording format with metadata and event arrays
+
+**Current status**: Empty placeholder files (`recording.slice.ts`, `RecordingPanel.tsx`) exist for future implementation.
