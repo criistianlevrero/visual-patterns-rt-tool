@@ -42,6 +42,7 @@ export interface ProjectActions {
     updateActiveSequence: (updates: Partial<Sequence>) => void;
     saveNewSequence: (name: string) => void;
     deleteSequence: (sequenceId: string) => void;
+    renameSequence: (sequenceId: string, newName: string) => void;
     duplicateSequence: (sequenceId: string, newName: string) => void;
     exportProject: () => void;
     importProject: (file: File) => void;

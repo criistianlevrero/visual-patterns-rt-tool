@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { useTextureStore } from '../../store';
-import { PlayIcon, StopIcon, PlusIcon, TrashIcon } from '../shared/icons';
+import { PlayIcon, StopIcon, PlusIcon, TrashIcon, SettingsIcon } from '../shared/icons';
 import CollapsibleSection from '../shared/CollapsibleSection';
 import PropertySequencer from './PropertySequencer';
 import { Button } from '../shared/Button';
@@ -11,6 +11,8 @@ import type { Sequence } from '../../types';
 const Sequencer: React.FC = () => {
     const [showNewSequenceInput, setShowNewSequenceInput] = useState(false);
     const [newSequenceName, setNewSequenceName] = useState('');
+    const [showRenameInput, setShowRenameInput] = useState(false);
+    const [renameValue, setRenameValue] = useState('');
     
     const {
         project,
@@ -33,6 +35,7 @@ const Sequencer: React.FC = () => {
         setSequencerNumSteps,
         saveNewSequence,
         deleteSequence,
+        renameSequence,
     } = useTextureStore.getState();
 
 
@@ -49,6 +52,21 @@ const Sequencer: React.FC = () => {
             saveNewSequence(newSequenceName.trim());
             setNewSequenceName('');
             setShowNewSequenceInput(false);
+        }
+    };
+
+    const handleRenameSequence = () => {
+        if (renameValue.trim() && activeSequence) {
+            renameSequence(activeSequence.id, renameValue.trim());
+            setRenameValue('');
+            setShowRenameInput(false);
+        }
+    };
+
+    const handleStartRename = () => {
+        if (activeSequence) {
+            setRenameValue(activeSequence.name);
+            setShowRenameInput(true);
         }
     };
 
@@ -119,6 +137,14 @@ const Sequencer: React.FC = () => {
                             onClick={() => setShowNewSequenceInput(!showNewSequenceInput)}
                         />
                         <Button 
+                            variant="secondary"
+                            size="icon"
+                            icon={<SettingsIcon className="w-5 h-5"/>}
+                            iconOnly
+                            title="Renombrar secuencia actual" 
+                            onClick={handleStartRename}
+                        />
+                        <Button 
                             variant="danger"
                             size="icon"
                             icon={<TrashIcon className="w-5 h-5"/>}
@@ -161,6 +187,44 @@ const Sequencer: React.FC = () => {
                                 onClick={() => {
                                     setShowNewSequenceInput(false);
                                     setNewSequenceName('');
+                                }}
+                            >
+                                Cancelar
+                            </Button>
+                        </div>
+                    </div>
+                )}
+
+                {/* Rename Sequence Input */}
+                {showRenameInput && (
+                    <div className="space-y-2">
+                        <label htmlFor="rename-sequence" className="font-medium text-gray-300 text-xs block">
+                            Renombrar secuencia
+                        </label>
+                        <div className="flex gap-2">
+                            <input
+                                id="rename-sequence"
+                                type="text"
+                                value={renameValue}
+                                onChange={(e) => setRenameValue(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && handleRenameSequence()}
+                                className="flex-1 bg-gray-700 text-white text-sm rounded-md px-3 py-1.5 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                autoFocus
+                            />
+                            <Button
+                                variant="primary"
+                                size="sm"
+                                onClick={handleRenameSequence}
+                                disabled={!renameValue.trim()}
+                            >
+                                Guardar
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                    setShowRenameInput(false);
+                                    setRenameValue('');
                                 }}
                             >
                                 Cancelar

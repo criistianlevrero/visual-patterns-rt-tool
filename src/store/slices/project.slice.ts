@@ -123,6 +123,20 @@ export const createProjectSlice: StateCreator<StoreState, [], [], ProjectActions
         get().setActiveSequenceIndex(newActiveIndex);
     },
 
+    renameSequence: (sequenceId, newName) => {
+        const project = get().project;
+        if (!project) return;
+
+        const sequenceIndex = project.sequences.findIndex(s => s.id === sequenceId);
+        if (sequenceIndex === -1) return;
+
+        const newProject = produce(project, draft => {
+            draft.sequences[sequenceIndex].name = newName;
+        });
+
+        get().setProject(newProject);
+    },
+
     duplicateSequence: (sequenceId, newName) => {
         const project = get().project;
         if (!project) return;
